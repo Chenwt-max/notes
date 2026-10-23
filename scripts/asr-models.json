@@ -1,0 +1,146 @@
+{
+  "Qwen3-ASR-1.7B": {
+    "repo": "Qwen/Qwen3-ASR-1.7B",
+    "provider": "official ModelScope repository",
+    "files": [
+      {
+        "Path": "README.md",
+        "Revision": "a04930dbe5419bfee073f7cade734f572689a3a8",
+        "Sha256": "5058416891bc47a2051557765997e8c42f8eb78a0e33c3e775bd17d4b0ba4d50",
+        "Size": 57456
+      },
+      {
+        "Path": "chat_template.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "75a8cfca24f00de72d796fbfed6858fc9614ef3dabd8696684cc3bc03a9c58ff",
+        "Size": 1161
+      },
+      {
+        "Path": "config.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "2e74a751548b8ad7d7526d29365ad8144c345d8b412b1152d25dc6698452712f",
+        "Size": 6194
+      },
+      {
+        "Path": "configuration.json",
+        "Revision": "77c7285c728016cf7123ee4c99586444f2a0d1ae",
+        "Sha256": "c57f6a580d63f7465c6a22ba95847aee05a1ae1181f5abddffb943d9febda061",
+        "Size": 56
+      },
+      {
+        "Path": "generation_config.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "1da527824d81e07118facff437e03f2e24a23311e3bdeb2368973fe77e5f275c",
+        "Size": 142
+      },
+      {
+        "Path": "merges.txt",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "Size": 1671853
+      },
+      {
+        "Path": "model-00001-of-00002.safetensors",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "a4cd1f1a04d90b757dc7f7dd26254e69a013b19e80efe590a83c6a3bde8608d6",
+        "Size": 4220320824
+      },
+      {
+        "Path": "model-00002-of-00002.safetensors",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "6e0b9d9e09e2e0238e7ef3cc8a484ab387e91b90f1900bedf88bc92d7929ccfc",
+        "Size": 478200688
+      },
+      {
+        "Path": "model.safetensors.index.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "f994739fe38e5210b9e3e8ce6c6307315e2ceac3cb630e7b7414d69dce520f60",
+        "Size": 64821
+      },
+      {
+        "Path": "preprocessor_config.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "45e120a4eda2c20c5d7f2ea9354e63536bf35e27aa573fb7cdf78017b378770d",
+        "Size": 330
+      },
+      {
+        "Path": "tokenizer_config.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c",
+        "Size": 12487
+      },
+      {
+        "Path": "vocab.json",
+        "Revision": "d69410f1c275f2b0fa60cbb9960edfcdb0ae0aec",
+        "Sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "Size": 2776833
+      }
+    ]
+  },
+  "Qwen3-ForcedAligner-0.6B": {
+    "repo": "Qwen/Qwen3-ForcedAligner-0.6B",
+    "provider": "official ModelScope repository",
+    "files": [
+      {
+        "Path": "README.md",
+        "Revision": "cf1c50164ea3ac48240d12bef5ead74aee0720cc",
+        "Sha256": "5058416891bc47a2051557765997e8c42f8eb78a0e33c3e775bd17d4b0ba4d50",
+        "Size": 57456
+      },
+      {
+        "Path": "chat_template.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "75a8cfca24f00de72d796fbfed6858fc9614ef3dabd8696684cc3bc03a9c58ff",
+        "Size": 1161
+      },
+      {
+        "Path": "config.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "d616c65d46c4b90bdc651b0a0963ea932732241140f337f9bb6b0335a9c8ef09",
+        "Size": 5982
+      },
+      {
+        "Path": "configuration.json",
+        "Revision": "671591c32b3fe7688ed66fe6fd0589286417d3d2",
+        "Sha256": "c57f6a580d63f7465c6a22ba95847aee05a1ae1181f5abddffb943d9febda061",
+        "Size": 56
+      },
+      {
+        "Path": "generation_config.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "948d089b23bca1d214e768d59c4438365665f52ec6d33678f4062206b3fbbb8c",
+        "Size": 115
+      },
+      {
+        "Path": "merges.txt",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "Size": 1671853
+      },
+      {
+        "Path": "model.safetensors",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "47831d0e82f96b20e9034dba01a075ee06436654719f6a68289e49f1b65ce0e7",
+        "Size": 1835544544
+      },
+      {
+        "Path": "preprocessor_config.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "45e120a4eda2c20c5d7f2ea9354e63536bf35e27aa573fb7cdf78017b378770d",
+        "Size": 330
+      },
+      {
+        "Path": "tokenizer_config.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "3ab80063f8511deb9566e6ad438d17b7a6277fcffd52d92854112f19d36bd81c",
+        "Size": 12666
+      },
+      {
+        "Path": "vocab.json",
+        "Revision": "6f4d7c9606feb7adf282c9e4b139f28e8695d867",
+        "Sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "Size": 2776833
+      }
+    ]
+  }
+}

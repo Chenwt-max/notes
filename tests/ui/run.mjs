@@ -1,0 +1,24 @@
+import {Window} from '../../frontend/node_modules/happy-dom/lib/index.js';
+import {mkdirSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+process.chdir(fileURLToPath(new URL('../../',import.meta.url)));
+mkdirSync('qa/release',{recursive:true});
+const require=createRequire(import.meta.url);
+const window=new Window({url:'https://fixture.invalid'});
+window.document.write('<!doctype html><html><head></head><body></body></html>');
+for(const name of ['window','document','navigator','HTMLElement','Element','HTMLDialogElement','HTMLImageElement','MutationObserver','Node','Event','PointerEvent','MouseEvent','localStorage','sessionStorage'])Object.defineProperty(globalThis,name,{value:name==='window'?window:window[name],configurable:true,writable:true});
+globalThis.innerWidth=1440;globalThis.innerHeight=900;
+globalThis.addEventListener=window.addEventListener.bind(window);globalThis.removeEventListener=window.removeEventListener.bind(window);
+globalThis.requestAnimationFrame=callback=>setTimeout(()=>callback(performance.now()),16);
+globalThis.cancelAnimationFrame=clearTimeout;
+globalThis.getComputedStyle=window.getComputedStyle.bind(window);
+globalThis.matchMedia=window.matchMedia.bind(window);globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+globalThis.IntersectionObserver=class{observe(){}disconnect(){}};
+window.HTMLElement.prototype.scrollTo=function(){};
+window.HTMLElement.prototype.setPointerCapture=function(){};
+window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};
+window.Range.prototype.getBoundingClientRect=function(){return {left:200,top:300,width:200,height:30,right:400,bottom:330};};
+const entry=process.argv[2]||'tests/ui/interactions.tsx',output=entry.replace(/\.tsx$/,'.cjs');
+require('../../frontend/node_modules/esbuild').buildSync({entryPoints:[entry],outfile:output,bundle:true,platform:'node',format:'cjs',jsx:'automatic',loader:{'.css':'empty'},nodePaths:['./frontend/node_modules']});
+try{const report=await require('../../'+output).run();console.log(report);window.close();process.exit(0);}catch(error){console.error(error);window.close();process.exit(1);}

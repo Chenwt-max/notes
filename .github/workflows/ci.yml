@@ -1,0 +1,38 @@
+name: public regression
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install public test dependencies
+        run: python -m pip install -r requirements.txt -c requirements-lock.txt
+      - name: Install FFmpeg
+        run: choco install ffmpeg --no-progress -y
+      - name: Frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Backend regression
+        run: python -m pytest tests -q --junitxml=qa/release/tests.xml
+      - name: Frontend typecheck and production build
+        run: npm run build --prefix frontend
+      - name: Component interactions
+        run: node tests/ui/run.mjs
+      - name: Existing notes without downloaded models
+        run: node tests/ui/run.mjs tests/ui/startup.tsx notes
+      - name: First home model guidance
+        run: node tests/ui/run.mjs tests/ui/startup.tsx home
+      - name: New course navigation waits for catalog
+        run: node tests/ui/run.mjs tests/ui/startup.tsx catalog
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-test-results
+          path: qa/release

@@ -1,0 +1,69 @@
+/* A fluid desktop workspace, with comfortable reading width inside each pane. */
+.app .site-nav{padding-inline:clamp(24px,3vw,72px)}
+.app .topbar{max-width:none;width:100%}
+.app .hierarchy-main{max-width:none;width:100%;padding:48px clamp(24px,3vw,72px) 88px}
+.app .detail-page,.app .detail-page.wide,.app .video-page{width:100%;max-width:none}
+.app .page-heading h1,.app .detail-page-head h1{font-size:clamp(34px,2.8vw,54px);line-height:1.4}
+.app .muted,.app .page-heading p,.app .detail-page-head p{font-size:clamp(19px,1.2vw,23px);line-height:1.85}
+.app button,.app input,.app select,.app textarea{font-size:19px}
+.app .field{font-size:20px;gap:14px}
+.app .field small,.app .context-help,.app .status,.app .job-copy small{font-size:18px;line-height:1.8}
+.app .site-nav button{font-size:20px}
+.app .field input,.app .field select{min-height:56px}
+.app .feature-grid,.app .source-grid{gap:28px}
+.app .feature-card{padding:34px;min-height:210px;gap:24px}
+.app .feature-card h2{font-size:27px}
+.app .feature-card p,.app .job-copy small,.app .lesson-copy p{font-size:19px;line-height:1.8}
+.app .settings-form,.app .detail-page>form{max-width:1080px;padding:36px;line-height:1.8}
+.app .model-summary{font-size:20px;gap:26px}
+.app .collection-grid.single{grid-template-columns:minmax(0,1fr)}
+.app .collection-grid.single .collection-card{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);min-height:360px}
+.app .collection-grid.single .collection-cover{padding:32px;min-height:360px}
+.app .collection-cover img{width:100%;height:100%;max-height:420px;object-fit:contain}
+.app .collection-copy{padding:clamp(32px,3.5vw,70px)}
+.app .collection-copy h2{font-size:clamp(30px,2.4vw,46px);line-height:1.5;overflow-wrap:anywhere}
+.app .collection-copy p,.app .card-bottom{font-size:21px}
+.app.reading-mode .hierarchy-main{max-width:none;padding:20px clamp(20px,2.5vw,64px) 80px}
+.app .note-reader,.app .note-reader.with-slides{max-width:none;width:100%}
+.app .note-reader .reader-layout{grid-template-columns:minmax(0,1fr) 260px;gap:clamp(36px,4vw,80px)}
+.app .note-reader .reader-resizable{grid-template-columns:var(--reader-split-columns);gap:0;align-items:start}
+.reader-layout>*{min-width:0}
+.reader-paper{width:100%;max-width:1100px;margin-inline:auto}
+.reader-resizable .reader-paper{max-width:none;padding-right:clamp(18px,2vw,42px)}
+.app .reader-heading h1{font-size:clamp(44px,3.2vw,66px)}
+.app .note-prose{font-size:clamp(22px,1.4vw,27px);line-height:1.95;letter-spacing:.035em}
+.app .note-chapter>h2{font-size:clamp(28px,2vw,38px);line-height:1.55;margin-bottom:30px}
+.app .note-prose h3{font-size:1.12em;line-height:1.7}
+.app .note-prose table{font-size:.92em}
+.app .reader-outline button{font-size:19px;line-height:1.7;padding-block:12px}
+.app .reader-divider{position:sticky;top:112px;height:calc(100vh - 144px);display:flex;align-items:center;justify-content:center;cursor:col-resize;touch-action:none;border-radius:12px}
+.reader-divider:before{content:'';position:absolute;top:0;bottom:0;width:1px;background:#dbe1e5}
+.reader-divider>span{z-index:1;width:5px;height:66px;border-radius:9px;background:#b7c6ce;transition:background .15s,box-shadow .15s}
+.reader-divider:hover>span,.reader-divider:focus-visible>span,.is-resizing .reader-divider>span{background:#68a7c1;box-shadow:0 0 0 5px #c5e7ed66}
+.reader-divider:focus-visible{outline:2px solid #5ba2c1;outline-offset:1px}
+.is-resizing{user-select:none;cursor:col-resize}.is-resizing img{pointer-events:none}
+.app .reader-resizable .slide-panel{position:sticky;top:106px;width:auto;margin-left:clamp(18px,2vw,42px);max-height:calc(100vh - 126px);z-index:auto}
+.app .slide-panel>header{padding:26px 26px 14px}.app .slide-panel h2{font-size:25px}
+.app .slide-panel>select{font-size:19px;min-height:54px}
+.app .slide-panel-pages{padding:0 22px 24px;gap:24px}
+.app .slide-preview{padding:10px;min-height:max-content;flex-shrink:0}
+.app .slide-preview>img{height:auto;max-height:none;object-fit:contain}
+.app .slide-supplements{flex-shrink:0;margin:0 22px 20px;background:#edf6f7;border:0;color:#367789;font-size:17px}
+@media(min-width:1800px){.app .feature-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.app .collection-grid{gap:36px}.app .reader-toolbar{padding-block:20px}}
+@media(max-width:900px){
+ .app .hierarchy-main,.app.reading-mode .hierarchy-main{padding:28px 20px 64px}
+ .app .note-reader .reader-layout,.app .note-reader .reader-resizable{grid-template-columns:minmax(0,1fr);gap:0}
+ .app .reader-divider{display:none}.reader-resizable .reader-paper{padding-right:0}
+ .app .reader-resizable .slide-panel{position:fixed;top:104px;right:18px;width:min(520px,calc(100vw - 36px));margin:0;z-index:60;box-shadow:0 18px 90px #17223d33}
+ .app .collection-grid.single .collection-cover{min-height:240px;padding:18px}
+ .app .collection-copy{padding:28px}.app .collection-copy h2{font-size:30px}
+}
+@media(max-width:600px){
+ .app .site-nav{padding-inline:18px}.app .feature-grid,.app .source-grid{gap:18px}
+ .app .collection-grid.single .collection-card{grid-template-columns:1fr}
+ .app .collection-grid.single .collection-cover{min-height:0;height:auto}
+ .app .collection-cover img{height:auto;max-height:none}
+ .app .feature-card,.app .settings-form,.app .detail-page>form{padding:24px}
+ .app .model-summary{font-size:18px;gap:18px}.app .note-prose{font-size:21px}
+ .app .reader-toolbar button{font-size:17px}.app .reader-toolbar .reader-back{font-size:0}
+}

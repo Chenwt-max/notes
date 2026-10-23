@@ -1,0 +1,36 @@
+{
+  "name": "notes",
+  "private": true,
+  "version": "1.0.0-rc.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "node ../tests/ui/run.mjs"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "gsap": "^3.14.0",
+    "katex": "0.18.2",
+    "lucide-react": "^0.577.0",
+    "markdown-it": "^14.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "happy-dom": "^21.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "overrides": {
+    "katex": "$katex"
+  }
+}

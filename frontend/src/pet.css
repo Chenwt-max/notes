@@ -1,0 +1,28 @@
+.app .assistant-avatar{justify-content:flex-end;overflow:visible}
+.assistant-avatar .assistant-character{width:100%;height:auto;aspect-ratio:2/3;animation:none!important;transform:none!important}
+.assistant-avatar[data-dragging=true] .assistant-character,.assistant-avatar[data-status=happy] .assistant-character{animation:none!important;transform:none!important}
+.assistant-character{background-size:300% 200%;aspect-ratio:2/3;width:180px;height:270px;filter:drop-shadow(0 6px 8px #20253912);animation:none!important;transform:none!important}
+.pet-wheel{position:fixed;z-index:140;width:296px;box-sizing:border-box;border-radius:34px;padding:8px 8px 15px;background:linear-gradient(145deg,#ffffffe8,#f2f6ffb0 48%,#ffffffb8);border:1px solid #ffffffed;box-shadow:0 18px 65px #24345523,inset 0 1px 1px #fff,inset 0 -1px 14px #dbe5ff44;backdrop-filter:blur(32px) saturate(170%);-webkit-backdrop-filter:blur(32px) saturate(170%);isolation:isolate}
+.pet-wheel-disc{height:278px;position:relative;outline:0}
+.pet-wheel-orbit{position:absolute;inset:36px;border:1px solid #c8d5ed57;border-radius:50%;background:radial-gradient(circle,#fff0 51%,#fff5 53%,#ecf3ff44 69%,#fff0 70%);pointer-events:none}
+.app .pet-wheel button{border:0;box-shadow:none;padding:0;min-height:0;min-width:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.app .pet-wheel-option{position:absolute;left:calc(50% + var(--pet-x));top:calc(50% + var(--pet-y));width:65px;height:72px;margin:-36px 0 0 -32.5px;transform:none;border-radius:24px;background:linear-gradient(150deg,#ffffffd9,#ffffff78);border:1px solid #fff;box-shadow:0 4px 15px #3545710b,inset 0 1px #fff;overflow:hidden;transition:box-shadow .18s,background .18s}
+.pet-wheel-option .assistant-character{height:65px;width:43.333px;flex-shrink:0;filter:none;pointer-events:none}
+.app .pet-wheel-option:hover{background:#fffffff2;box-shadow:0 4px 18px #3a6fc226}
+.app .pet-wheel-option[aria-checked=true]{background:#eef5ffed;border-color:#abc9fb;box-shadow:0 0 0 3px #d9e9ff87,0 7px 20px #4878b91c}
+.pet-selected-dot{position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:#0071e3;opacity:0}
+.pet-wheel-option[aria-checked=true] .pet-selected-dot{opacity:1}
+.app .pet-wheel-center{position:absolute;left:50%;top:50%;width:80px;height:98px;margin:-49px 0 0 -40px;transform:none;background:none;border-radius:24px}
+.pet-wheel-center .assistant-character{width:62px;height:93px;filter:drop-shadow(0 3px 5px #25396115)}
+.pet-wheel-center>svg{position:absolute;right:-3px;bottom:2px;padding:5px;background:#ffffffdc;border:1px solid white;border-radius:50%;color:#6f819f;box-sizing:content-box}
+.pet-wheel-option:focus-visible,.pet-wheel-center:focus-visible,.pet-wheel-close:focus-visible{outline:3px solid #77a5ef;outline-offset:3px}
+.pet-size-control{display:flex;align-items:center;gap:10px;padding:8px 10px 1px;color:#626a7b}
+.pet-size-control label{font-size:16px;letter-spacing:.04em;white-space:nowrap}
+.pet-size-control input{min-width:0;flex:1;width:100%;height:5px;accent-color:#758eb8;cursor:pointer}
+.pet-size-control output{font-size:14px;min-width:36px;text-align:right;font-variant-numeric:tabular-nums;color:#7d879a}
+.app .pet-size-control button{background:none;color:#8c96a8;width:22px;height:26px}
+.pet-auto-control{display:flex;align-items:center;gap:9px;margin:12px 10px 0;font-size:15px;color:#626a7b;cursor:pointer}
+.app .pet-auto-control input{width:16px;height:16px;min-height:16px;min-width:16px;margin:0;padding:0;accent-color:#758eb8;cursor:pointer}
+.app .pet-wheel-close{position:absolute;right:10px;top:10px;border-radius:50%;width:25px;height:25px;background:#ffffffa1;color:#8992a5}
+@media(max-width:360px){.pet-wheel{width:280px}.pet-size-control{gap:7px}}
+@media(prefers-reduced-motion:reduce){.pet-wheel-option{transition:none}}
