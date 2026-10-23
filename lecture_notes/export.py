@@ -10,7 +10,9 @@ from .note_content import clean_note
 
 
 def source_caption(visual):
-    return f'原课件第{visual["document_page"]}页（无视频时间戳）' if visual.get('document_page') else f'{stamp(visual["start"])}—{stamp(visual["end"])} · 截图 {visual["capture_ts"]:.3f}秒'
+    if visual.get('document_page'):return f'原课件第{visual["document_page"]}页（无视频时间戳）'
+    if 'start' not in visual or 'end' not in visual:return f'截图 {visual["capture_ts"]:.3f}秒'
+    return f'{stamp(visual["start"])}—{stamp(visual["end"])} · 截图 {visual["capture_ts"]:.3f}秒'
 
 
 def export_notes(title, sections, segments, visuals, output, warnings=None):

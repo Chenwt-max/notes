@@ -136,6 +136,7 @@ def display_pages(visuals):
     groups={}
     for visual in visuals:
         if visual.get('api_display',{}).get('keep') is False:continue
+        if not visual.get('api_display') and visual.get('is_representative') is False:continue
         groups.setdefault(visual.get('content_id',visual['id']),[]).append(visual)
     def rank(v):
         return (any(r.get('keep') and r.get('final_state')=='final' for r in v.get('api_display',{}).get('decisions',[])),
