@@ -1,0 +1,4 @@
+type Value={mode:'video'|'file';path:string};
+export default function HandoutInput({value,onChange}:{value:Value;onChange:(value:Value)=>void}){
+ return <fieldset><legend>课件来源</legend><label className="field">提取方式<select value={value.mode} onChange={e=>onChange({...value,mode:e.target.value as Value['mode']})}><option value="video">从视频自动提取</option><option value="file">使用已有 PPT / PDF</option></select></label>{value.mode==='file'&&<><label className="field">课件文件完整路径<input required value={value.path} onChange={e=>onChange({...value,path:e.target.value})} placeholder={'D:\\课程\\第一讲.pdf'}/></label><p className="muted">直接使用文档原页，跳过视频课件提取。支持 PDF、PPTX、PPT；PPT 需要本机 PowerPoint 或 LibreOffice。</p><details className="context-help"><summary>课件如何参与笔记整理</summary><p>本地图像算法与 PaddleOCR-VL 辅助筛选。整理时将原页与字幕交给支持图片的 API 读取文字、公式并判断展示价值，共用每份笔记额度。原始页面始终保留，无视频时间戳的课件按文档原序查看。</p></details></>}</fieldset>;
+}

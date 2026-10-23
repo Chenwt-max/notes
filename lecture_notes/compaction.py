@@ -24,7 +24,7 @@ GROUP_VERSION=4
 def text_agrees(a,b):
     """OCR is additional grouping evidence, never permission to delete a source."""
     def normalized(v):
-        return ''.join(c for c in unicodedata.normalize('NFKC',v.get('ocr','')).lower() if c.isalnum())
+        return ''.join(c for c in unicodedata.normalize('NFKC',v.get('screening_text') or v.get('ocr','')).lower() if c.isalnum())
     aa,bb=normalized(a),normalized(b)
     return min(len(aa),len(bb))>=32 and SequenceMatcher(None,aa,bb,autojunk=False).ratio()>=.85
 

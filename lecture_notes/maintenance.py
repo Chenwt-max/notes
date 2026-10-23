@@ -37,9 +37,13 @@ def cleanup_plan(output):
     keep=set()
     for v in visuals:
         keep.add(v['image'])
+        if v.get('hd_image'):keep.add(v['hd_image'])
         if v.get('person_mask'):keep.add(v['person_mask'])
         keep.add(f"formula_cache/{v['id']}.json")
         keep.add(f"document_cache/{v['id']}.json")
+        keep.add(f"screening_cache/{v['id']}.json")
+        screened=read_json(output/f"screening_cache/{v['id']}.json",{})
+        if screened.get('image_sha256'):keep.add(f"screening_cache/{screened['image_sha256']}.json")
         for f in v.get('formulas',[]):
             if f.get('image'):keep.add(f['image'])
         image=output/v['image']
@@ -49,7 +53,7 @@ def cleanup_plan(output):
     for part in sorted((output/'parts').glob('[0-9][0-9][0-9]')):
         for row in cleanup_plan(part):
             candidates.append({**row,'path':part.relative_to(output).as_posix()+'/'+row['path']})
-    for folder in ['images','masks','formulas','formula_cache','ocr_cache','document_cache']:
+    for folder in ['images','masks','formulas','formula_cache','ocr_cache','document_cache','screening_cache','api_images']:
         parent=output/folder
         if not parent.exists():continue
         for path in parent.iterdir():

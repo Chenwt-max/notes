@@ -38,6 +38,7 @@ def review_materials(job,output,regroup=False):
     grouping=None
     quality=None
     if regroup:
+        if job['spec'].get('handout_path'):raise ValueError('导入课件按原始页序完整保留，无需重新精简')
         if not visuals or not records:
             raise ValueError('请先完成素材提取，再整理代表页')
         # Keep one bounded rollback snapshot; never duplicate bitmaps or videos.

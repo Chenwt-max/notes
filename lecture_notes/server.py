@@ -217,6 +217,9 @@ def new_job(spec:dict):
 
 
 def create_new_job(spec):
+    from .handouts import local_handout
+    handout=local_handout(spec['handout_path']) if spec.get('handout_path') else None
+    if handout and spec.get('handout_scope','auto') not in {'auto','all'}:raise ValueError('课件补充识别范围无效')
     from .runtime import PORTABLE
     if PORTABLE:
         from .preparation import state
@@ -243,8 +246,11 @@ def create_new_job(spec):
         'budget_cny':local_models['budget_per_note'],
         'asr_model':local_models['asr_model'],
         'person_model':local_models['person_model'],'formula_model':local_models['formula_model'],
-        'formulas':bool(spec.get('formulas',True)),'organize':bool(spec.get('organize',True)),
-        'visuals_only':bool(spec.get('visuals_only',False)),'regions':regions,
+        'slide_mode':'vision_api','formulas':False,
+        'organize':bool(spec.get('organize',True)),
+        'visuals_only':bool(spec.get('visuals_only',False)),'regions':regions if not handout else None,
+        **({'handout_path':str(handout),'handout_recognize':bool(spec.get('handout_recognize',True)),
+            'handout_scope':spec.get('handout_scope','auto')} if handout else {}),
         'regions_capture_ts':float(spec.get('regions_capture_ts',windows[0][0])) if regions else None})
 
 
@@ -280,7 +286,7 @@ def read_job_detail(job_id):
         'report':read_json(output/'report.json',{}),'usage':usage_for(job_id),'compaction':read_json(output/'compaction.json',{}),
         'profiles':read_json(output/'profiles.json',[]),'estimate':read_json(output/'api_estimate.json',{}),
         'quality':read_json(output/'quality.json',{}),'note_review':read_json(output/'note_review.json',{}),
-        'exports':[p for p in ['notes.md','notes.html','visuals.html','transcript.srt','transcript.vtt','transcript.txt','ocr.txt','visual_audit.json','pages.json','report.json','quality.json','note_repairs.json','note_review.json'] if (output/p).exists()]}
+        'exports':[p for p in ['notes.md','notes.html','visuals.html','transcript.srt','transcript.vtt','transcript.txt','ocr.txt','visual_audit.json','pages.json','report.json','quality.json','note_repairs.json','note_review.json','slide_review.json'] if (output/p).exists()]}
 
 
 @app.post('/api/jobs/{job_id}/materials/{action}')
@@ -407,6 +413,8 @@ def source_frame(job_id:str,source_id:str,full:bool=False):
     job=get_job(job_id);output=OUTPUT/job_id
     record=next((r for r in read_json(output/'source_records.json',[]) if r['id']==source_id),None)
     if record is None:raise HTTPException(404,'来源时间不存在')
+    if record.get('document_page'):
+        return FileResponse(safe_child(output,record['image']),media_type='image/png')
     path=source(job['spec']['path']);manifest=read_json(output/'manifest.json',{})
     if manifest.get('source')!=source_identity(path):raise ValueError('源视频已变化，无法按原记录恢复')
     image=image_at(path,record['capture_ts'])
@@ -439,6 +447,8 @@ def recognize_one_visual(job_id:str,visual_id:str):
 
 def queue_visual_formulas(job_id,visual_id):
     job=get_job(job_id);output=OUTPUT/job_id
+    if job['spec'].get('slide_mode')=='vision_api':raise ValueError('新任务由API在整理时读取原图公式，不单独排队本地公式识别')
+    if job['spec'].get('handout_path'):raise ValueError('此任务直接读取原课件，不调用图像识别；请在公式核对中手动修订')
     if job['status'] not in {'materials_ready','ready'}:raise ValueError('请等待本节提取完成后再识别补充画面')
     if not any(v['id']==visual_id for v in read_json(output/'visuals.json',[])):raise ValueError('画面不存在')
     write_json(output/'formula_selection.json',[visual_id])
@@ -464,9 +474,10 @@ def prepare_bundle(job_id):
     output = OUTPUT/job_id
     if not (output/'notes.html').exists():
         raise ValueError('图文讲义尚未生成')
-    files = [p for p in output.iterdir() if p.name in {'notes.html','notes.md','visuals.html','notes.json','visuals.json','manifest.json','report.json','transcript.srt','transcript.vtt','transcript.txt','ocr.txt','audio_audit.json','visual_audit.json','pages.json','source_records.json','compaction.json','quality.json','note_repairs.json','note_review.json'}]
-    for folder in ['images','formulas','assets']:
-        files.extend(p for p in (output/folder).rglob('*') if p.is_file())
+    files = [p for p in output.iterdir() if p.name in {'notes.html','notes.md','visuals.html','notes.json','visuals.json','manifest.json','report.json','transcript.srt','transcript.vtt','transcript.txt','ocr.txt','audio_audit.json','visual_audit.json','pages.json','source_records.json','compaction.json','quality.json','note_repairs.json','note_review.json','slide_review.json'}]
+    for folder in ['images','api_images','formulas','assets','documents']:
+        files.extend(p for p in (output/folder).rglob('*') if p.is_file() and
+                     (folder!='documents' or p.name in {'source.pdf','source.pptx','source.ppt','pages.pdf'}))
     return zipped_response(output,files,job['spec']['title']+'-学习资料.zip')
 
 
@@ -497,9 +508,11 @@ def prepare_pages(job_id):
     import html
     job=get_job(job_id);output=OUTPUT/job_id
     if job['status'] in {'running','starting','queued','pause_requested'}:raise ValueError('请在本节处理完成后导出')
-    visuals=sorted([v for v in read_json(output/'visuals.json',[]) if v.get('is_representative',True)],key=lambda v:v['capture_ts'])
+    from .slide_review import display_pages
+    visuals=sorted(display_pages(read_json(output/'visuals.json',[])),key=lambda v:v['capture_ts'])
     if not visuals:raise ValueError('尚无可导出的代表画面')
-    cards=''.join(f'<figure><img src="{html.escape(v["image"])}"><figcaption>{v["id"]} · 原视频 {v["capture_ts"]:.2f}秒</figcaption></figure>' for v in visuals)
+    from .export import source_caption
+    cards=''.join(f'<figure><img src="{html.escape(v["image"])}"><figcaption>{v["id"]} · {source_caption(v)}</figcaption></figure>' for v in visuals)
     index='<meta charset="utf-8"><title>精简课件</title><style>body{max-width:1000px;margin:30px auto;font-family:sans-serif}img{max-width:100%}figure{margin:30px 0}</style><h1>精简课件与板书</h1><p>仅含代表页；互补及待核对状态见完整学习资料包。</p>'+cards
     return zipped_response(output,[output/v['image'] for v in visuals],job['spec']['title']+'-精简课件.zip',{'index.html':index})
 

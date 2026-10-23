@@ -37,6 +37,7 @@ pyclipper==1.4.0
 pydantic==2.14.1
 pydantic_core==2.50.1
 Pygments==2.21.0
+pypdfium2==5.14.0
 pytest==9.1.1
 PyYAML==6.0.3
 rapidocr==3.10.0

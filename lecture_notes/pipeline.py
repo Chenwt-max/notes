@@ -59,8 +59,16 @@ def attach_formulas(visuals, output):
                 if not any(a<=x<=c and b<=y<=d for a,b,c,d in boxes):lines.append(line)
             visual['ocr_lines']=lines
             visual['ocr']='\n'.join(line['text'] for line in lines)
+            if visual.get('document_page'):
+                visual['ocr']='\n'.join(dict.fromkeys(visual['ocr'].splitlines()+visual.get('native_text','').splitlines()))
             visual['ocr_model']=DOCUMENT_MODEL
         found = read_json(output/'formula_cache'/f"{visual['id']}.json", [])
+        if visual.get('document_page'):
+            combined=visual.get('native_formulas',[])+found
+            seen=set();found=[]
+            for formula in combined:
+                key=''.join(formula['latex'].split())
+                if key not in seen:found.append(formula);seen.add(key)
         visual['formulas'] = []
         source = None
         for index, formula in enumerate(found):
@@ -115,6 +123,35 @@ def run_formula(job_id, output, callback, check):
             raise
 
 
+def run_screening(output,callback,check):
+    from .runtime import python_for
+    visuals=read_json(output/'visuals.json',[])
+    def ready(v):
+        cached=read_json(output/'screening_cache'/f"{v['id']}.json",{})
+        return cached.get('model')==DOCUMENT_MODEL and cached.get('version')==1 and cached.get('image_sha256')==hashlib.sha256((output/v['image']).read_bytes()).hexdigest()
+    if all(ready(v) for v in visuals):return
+    python=python_for('document')
+    if not python.exists():raise RuntimeError('课件筛选环境未安装，请运行安装入口')
+    stop=output/'formula.stop';stop.unlink(missing_ok=True)
+    (output/'formula.waiting').unlink(missing_ok=True)
+    with (output/'screening.log').open('a',encoding='utf-8') as log:
+        process=subprocess.Popen([str(python),'-X','utf8','-m','lecture_notes.formula_worker',str(output),'--screen'],
+            cwd=ROOT,stdout=log,stderr=log,env={**os.environ,'PYTHONUTF8':'1'})
+        try:
+            while process.poll() is None:
+                check()
+                count=sum((output/'screening_cache'/f"{v['id']}.json").exists() for v in visuals)
+                callback(count/max(1,len(visuals)),f'课件筛选 {count}/{len(visuals)} · {DOCUMENT_MODEL}')
+                time.sleep(1)
+            if process.returncode:raise RuntimeError('课件筛选进程失败：'+(output/'screening.log').read_text(encoding='utf-8',errors='replace')[-1600:])
+        except TaskStopped:
+            stop.touch()
+            from .runner import terminate_tree
+            terminate_tree(process)
+            raise
+    if not all(ready(v) for v in visuals):raise RuntimeError('课件筛选结果不完整，检查点保留')
+
+
 def run_job(job_id):
     return run_block(job_id)
 
@@ -122,6 +159,7 @@ def run_job(job_id):
 def run_block(job_id):
     job = get_job(job_id)
     spec = job['spec']
+    image_notes=spec.get('slide_mode')=='vision_api'
     output = OUTPUT/job_id
     output.mkdir(parents=True,exist_ok=True)
     path = Path(spec['path']).resolve()
@@ -140,11 +178,15 @@ def run_block(job_id):
         metadata = probe(path)
         windows = validate_windows(spec.get('windows'),metadata['duration'])
         identity = source_identity(path)
+        handout=Path(spec['handout_path']) if spec.get('handout_path') else None
+        handout_identity=source_identity(handout) if handout else None
         manifest = read_json(output/'manifest.json',{})
         visual_version = manifest.get('visual_version',4) if manifest else 6
         if manifest and visual_version<5 and 'visuals' not in manifest.get('completed_stages',[]):
             raise ValueError('此任务的旧版画面扫描尚未完成，请新建任务使用优化提取；原检查点保留')
         fingerprint = digest({'source':identity,'windows':windows,'regions':spec.get('regions'),'visual_version':visual_version,
+                              **({'slide_mode':spec['slide_mode']} if spec.get('slide_mode') else {}),
+                              **({'handout':handout_identity} if handout else {}),
                               **({'asr_model':spec['asr_model']} if 'asr_model' in spec else {}),
                               **({k:spec[k] for k in ['person_model','formula_model'] if spec.get(k)}),
                               **({'regions_capture_ts':spec['regions_capture_ts']} if spec.get('regions_capture_ts') is not None else {})})
@@ -159,12 +201,31 @@ def run_block(job_id):
             manifest = {'fingerprint':fingerprint,'source':identity,'sha256':h.hexdigest(),'metadata':metadata,
                         'models':{'person':spec.get('person_model','yolox-tiny'),'formula':DOCUMENT_MODEL},
                         'windows':windows,'visual_version':visual_version,'completed_stages':[],'created':time.time()}
+            if image_notes:
+                manifest['slide_mode']='vision_api'
+                manifest['models'].pop('formula',None)
+                manifest['models']['screening']=DOCUMENT_MODEL
             write_json(output/'manifest.json',manifest)
         done = manifest['completed_stages']
         def completed(name):
             if name not in done:
                 done.append(name)
             write_json(output/'manifest.json',manifest)
+        if handout:
+            from .handouts import import_handout
+            if 'handout' not in done:
+                stage='直接读取已有课件'
+                timing.call('handout_import',import_handout,handout,output,windows,callback,check,
+                            False if image_notes else ('all' if spec.get('handout_scope')=='all' else True) if spec.get('handout_recognize',True) and not spec.get('visuals_only') else False)
+                manifest['handout']=read_json(output/'handout.json')
+                completed('handout')
+            for name in ('visuals','relations','compact','ocr'):completed(name)
+            handout_pages=read_json(output/'visuals.json',[])
+            selected=read_json(output/'formula_selection.json',[v['id'] for v in handout_pages if v.get('needs_document_recognition')])
+            if spec.get('handout_recognize',True) and not spec.get('visuals_only') and selected:
+                write_json(output/'formula_selection.json',selected)
+            else:completed('formulas')
+            if not image_notes:warnings.extend(read_json(output/'handout.json',{}).get('warnings',[]))
         if not spec.get('visuals_only') and metadata['audio'] and ('asr' not in done or not read_json(output/'transcript.json',[])):
             stage = '提取课程字幕'
             with gpu_slot(check,lambda:callback(0,'等待显卡资源，其他课程仍在处理')):
@@ -195,17 +256,28 @@ def run_block(job_id):
         if 'compact' not in done:
             visuals,_,_ = timing.call('compaction',compact_visuals,visuals,output,check,callback)
             completed('compact')
-        visual_audit = audit_visuals(visuals,read_json(output/'layouts.json',[]),windows,output,visual_version)
+        if handout:
+            from .handouts import document_audit
+            visual_audit=document_audit(visuals,output)
+        else:visual_audit = audit_visuals(visuals,read_json(output/'layouts.json',[]),windows,output,visual_version)
         if visual_audit['uncovered_intervals_over_0_6s'] or visual_audit['region_coverage_gaps_over_0_6s']:
             warnings.append('画面时间轴存在待核对的覆盖间隙，请查看画面核对报告')
-        stage = '识别课件文字'
-        if 'ocr' not in done:
+        stage = '筛选课件内容' if image_notes else '识别课件文字'
+        if image_notes:
+            if 'screening' not in done and not spec.get('visuals_only'):
+                stage='筛选课件与动画状态'
+                timing.call('screening_stage',run_screening,output,callback,check)
+                completed('screening')
+            for visual in visuals:
+                visual['screening_text']=read_json(output/'screening_cache'/f"{visual['id']}.json",{}).get('text','')
+            write_json(output/'visuals.json',visuals)
+        elif 'ocr' not in done:
             with gpu_slot(check,lambda:callback(0,'等待显卡资源，其他课程仍在处理')):
                 visuals = timing.call('ocr',recognize,visuals,output,callback,check)
             completed('ocr')
         if spec.get('visuals_only'):
             segments = []
-            warnings.append('此任务选择了仅提取画面，尚未转写语音或识别公式')
+            warnings.append('此任务直接读取原课件，未转写语音' if handout else '此任务选择了仅提取画面，尚未转写语音或识别公式')
         else:
             stage = '提取课程字幕'
             if not metadata['audio']:
@@ -215,13 +287,18 @@ def run_block(job_id):
             gaps = audio_audit.get('uncovered_speech',[])
             if gaps:
                 warnings.append(f'检测到{len(gaps)}处有语音而未覆盖字幕的候选区间，请对照原视频核查')
-            if spec.get('formulas',True):
+            if image_notes:pass  # Original page images are read in the budgeted note request.
+            elif spec.get('formulas',True):
                 stage = '识别课件文字与公式'
                 if 'formulas' not in done:
                     timing.call('formula_stage',run_formula,job_id,output,callback,check)
                     visuals = attach_formulas(visuals,output)
                     if read_json(output/'formula_runtime.json',{}).get('model')==DOCUMENT_MODEL:
                         manifest['document_model']=DOCUMENT_MODEL
+                    if handout:
+                        details=read_json(output/'handout.json',{})
+                        write_json(output/'handout.json',{**details,'ocr_used':True,'recognition_model':DOCUMENT_MODEL,
+                            'recognized_page_ids':read_json(output/'formula_selection.json',[])})
                     completed('formulas')
                 (output/'formula_selection.json').unlink(missing_ok=True)
             else:
@@ -229,7 +306,7 @@ def run_block(job_id):
         records=read_json(output/'source_records.json',[])
         # Refine browsing groups after document recognition, so a newly grouped
         # complementary page never loses its original formula-recognition pass.
-        if records and manifest.get('browse_group_version')!=GROUP_VERSION:
+        if not handout and records and manifest.get('browse_group_version')!=GROUP_VERSION:
             stage='结合课件文字精简展示'
             grouping=timing.call('post_ocr_grouping',regroup_existing,visuals,records,output,check,callback)
             write_json(output/'visuals.json',visuals)
@@ -256,7 +333,7 @@ def run_block(job_id):
         by_speech={digest(s['speech']):s for s in previous}
         for section in sections:
             old=prior.get(digest({'speech':section['speech'],'evidence':section['evidence']}),by_speech.get(digest(section['speech']),{}))
-            for key in ('body','organized','omitted','editorial_notes','body_before_cleanup','repairs','warning','deferred_formula_ids','body_before_review','review_repairs','reviewed_source_hash','reviewed_body_hash','review_warning','review_feedback','review_deferred','publication_pending'):
+            for key in ('body','organized','omitted','editorial_notes','body_before_cleanup','repairs','warning','deferred_formula_ids','body_before_review','review_repairs','reviewed_source_hash','reviewed_body_hash','review_warning','review_feedback','review_deferred','publication_pending','slide_image_ids','slide_decisions','slide_review_warning'):
                 if key in old:section[key]=old[key]
             if spec.get('organize') and not section.get('organized'):section['publication_pending']=True
         title = spec.get('title') or path.stem
@@ -271,6 +348,7 @@ def run_block(job_id):
         if spec.get('organize',False):
             stage = '整理笔记与核算费用'
             config=settings(True)
+            if handout and not image_notes:config={**config,'include_ocr_context':True}
             if spec.get('budget_cny') is not None:
                 hours=sum(b-a for a,b in windows)/3600
                 budget=float(spec['budget_cny'])
@@ -302,6 +380,9 @@ def run_block(job_id):
         else:
             warnings.append('尚未调用API整理；当前为完整字幕与来源图文讲义')
         stage = '导出并检查来源'
+        if image_notes:
+            from .slide_review import apply_decisions
+            visuals=apply_decisions(output,sections)
         write_json(output/'notes_working.json',sections)
         write_json(output/'notes.json',public_sections())
         title = spec.get('title') or path.stem

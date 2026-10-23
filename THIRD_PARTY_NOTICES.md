@@ -14,6 +14,7 @@
 | OpenCV | https://github.com/opencv/opencv | Apache-2.0；画面分析及几何匹配 |
 | YOLOX-Tiny / YOLOX-S | https://github.com/Megvii-BaseDetection/YOLOX | Apache-2.0，Copyright Megvii 2021–2022；本地人物检测。person.py 的预处理和解码改自官方 ONNX 示例，已改为仅检测人物并使用明确的 CPU / CUDA 执行设备；许可证副本及模型 SHA256 在 models/ |
 | FFmpeg | https://ffmpeg.org/legal.html | 便携包采用 BtbN LGPL shared 构建；版本、下载 SHA-256、原许可证和源代码获取信息随包保留。开发者本机的 GPL 构建不复制入包。 |
+| pypdfium2 / PDFium | https://github.com/pypdfium2-team/pypdfium2 | pypdfium2 采用 Apache-2.0 或 BSD-3-Clause；PDFium 及其依赖许可证随运行时原样保留。用于原文档页面渲染和文字层提取，不执行OCR。 |
 | FastAPI | https://github.com/fastapi/fastapi | MIT；本地接口 |
 | React | https://github.com/facebook/react | MIT；网页 |
 | GSAP | https://gsap.com/community/standard-license/ | GSAP Standard License / No Charge；保留软件包中的许可证，不将其称为 MIT 或 OSI 开源 |

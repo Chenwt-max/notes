@@ -9,6 +9,10 @@ from .common import ROOT, stamp, read_json,write_json,math_markdown
 from .note_content import clean_note
 
 
+def source_caption(visual):
+    return f'原课件第{visual["document_page"]}页（无视频时间戳）' if visual.get('document_page') else f'{stamp(visual["start"])}—{stamp(visual["end"])} · 截图 {visual["capture_ts"]:.3f}秒'
+
+
 def export_notes(title, sections, segments, visuals, output, warnings=None):
     sections=[clean_note(s) for s in sections]
     output = Path(output)
@@ -61,9 +65,9 @@ def export_notes(title, sections, segments, visuals, output, warnings=None):
             visual = max((v for v in local_visuals if v['content_id']==visual['content_id']),
                          key=lambda x:(x.get('is_representative',True),x.get('quality_score',0)))
             kind = {'slides':'课件','board':'板书','screen':'整屏画面'}.get(visual['kind'],'画面')
-            lines += [f'### {kind} · {stamp(visual["capture_ts"])}', '',
-                      f'![{kind} {stamp(visual["capture_ts"])}]({visual["image"]})', '',
-                      f'出现区间 {stamp(visual["start"])}—{stamp(visual["end"])}；截图时刻 {stamp(visual["capture_ts"])}。', '']
+            lines += [f'### {kind} · {source_caption(visual)}', '',
+                      f'![{kind}]({visual["image"]})', '',
+                      source_caption(visual), '']
             supplements=[v for v in visuals if v['content_id']==visual['content_id'] and not v.get('is_representative',True)]
             if supplements:lines += [f'[查看本组的{len(supplements)}幅补充或待核对状态](visuals.html#{visual["content_id"]})','']
             for formula in visual.get('formulas',[]):
@@ -79,7 +83,7 @@ def export_notes(title, sections, segments, visuals, output, warnings=None):
     (output/'notes.md').write_text(markdown, encoding='utf-8')
     ocr_lines=['课件与板书识别文字（本地识别，须对照原图核查）','']
     for visual in visuals:
-        ocr_lines += [f"[{stamp(visual['capture_ts'])}] {visual['id']} · {visual['image']}",visual.get('ocr',''),'']
+        ocr_lines += [f"[{source_caption(visual)}] {visual['id']} · {visual['image']}",visual.get('ocr',''),'']
     (output/'ocr.txt').write_text('\n'.join(ocr_lines),encoding='utf-8')
     export_visual_index(visuals,output)
     assets = output/'assets'
@@ -114,10 +118,10 @@ def export_visual_index(visuals,output):
     for key,items in groups.items():
         best = max(items,key=lambda x:(x.get('is_representative',True),x.get('quality_score',0)))
         kind = {'slides':'课件','board':'板书','screen':'整屏画面'}.get(best['kind'],'画面')
-        entries = ''.join(f'<figure><a href="{html.escape(v["image"])}"><img loading="lazy" src="{html.escape(v["image"])}"></a>'
-                          f'<figcaption>{v["id"]} · {stamp(v["start"])}—{stamp(v["end"])} · 截图 {v["capture_ts"]:.3f}秒</figcaption></figure>'
+        entries = ''.join(f'<figure><a href="{html.escape(v.get("hd_image",v["image"]))}"><img loading="lazy" src="{html.escape(v.get("hd_image",v["image"]))}"></a>'
+                          f'<figcaption>{v["id"]} · {source_caption(v)}</figcaption></figure>'
                           for v in items)
-        cards.append(f'<article id="{key}"><h2>{key} · {kind} · {len(items)}幅互补或待核对状态</h2><img loading="lazy" src="{html.escape(best["image"])}">'
+        cards.append(f'<article id="{key}"><h2>{source_caption(best) if best.get("document_page") else f"{key} · {kind} · {len(items)}幅互补或待核对状态"}</h2><img loading="lazy" src="{html.escape(best.get("hd_image",best["image"]))}">'
                      f'<details><summary>展开补充状态及时间</summary><div class="grid">{entries}</div></details></article>')
     page = ('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>画面核对索引</title><style>body{max-width:1100px;margin:30px auto;padding:20px;font:19px/1.9 "Microsoft YaHei",sans-serif;background:#f5f5f7;color:#1d1d1f;letter-spacing:.025em}'

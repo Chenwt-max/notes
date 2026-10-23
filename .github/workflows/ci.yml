@@ -25,6 +25,8 @@ jobs:
         run: npm run build --prefix frontend
       - name: Component interactions
         run: node tests/ui/run.mjs
+      - name: Existing PPT and PDF input
+        run: node tests/ui/run.mjs tests/ui/handouts.tsx
       - name: Existing notes without downloaded models
         run: node tests/ui/run.mjs tests/ui/startup.tsx notes
       - name: First home model guidance

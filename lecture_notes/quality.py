@@ -82,7 +82,7 @@ def audit_output(output, expect_subtitles=True):
     if visuals and not records:issue('missing_source_records','','尚无完整来源映射，不能确认覆盖')
     stages=manifest.get('completed_stages')
     if stages is not None:
-        required={'visuals','compact','ocr'}|({'asr'} if expect_subtitles else set())
+        required={'visuals','compact'}|({'screening'} if manifest.get('slide_mode')=='vision_api' and expect_subtitles else {'ocr'} if manifest.get('slide_mode')!='vision_api' else set())|({'asr'} if expect_subtitles else set())
         for stage in sorted(required-set(stages)):
             issue('unfinished_stage',stage,'相应处理阶段尚未完成')
     mapping={v['id']:v for v in visuals}
@@ -108,6 +108,9 @@ def audit_output(output, expect_subtitles=True):
         path=Path(source['path'])
         if not path.is_file() or source_identity(path)!=source:
             issue('source_changed','','原视频身份已改变，不能继续复用对应结果')
+    handout=manifest.get('handout',{}).get('source',{})
+    if handout and (not Path(handout['path']).is_file() or source_identity(handout['path'])!=handout):
+        issue('handout_changed','','原课件已改变，不能混用对应结果')
     formulas=[]
     for visual in visuals:
         for formula in visual.get('formulas',[]):

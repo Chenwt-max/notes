@@ -55,6 +55,7 @@ def compact_evidence(section,representatives,byte_limit):
     selected=[]
     for item in sorted(section['evidence'],key=lambda e:e['id'] not in representatives):
         row={'id':item['id'],'time':item['time'],'text':'','formula_candidates':[]}
+        if item.get('source_type'):row['source_type']=item['source_type']
         for line in item.get('text','').splitlines():
             trial={**row,'text':(row['text']+'\n'+line).strip()}
             if len(json.dumps(selected+[trial],ensure_ascii=False).encode('utf-8'))<=byte_limit:row=trial
@@ -74,7 +75,11 @@ def build_sections(segments, visuals, windows, unsafe_formulas=()):
         while position < end:
             finish = min(position+300, end)
             speech = [s for s in segments if position <= (s['start']+s['end'])/2 < finish]
-            images = [v for v in visuals if any(a['start'] < finish and a['end'] > position for a in v.get('appearances',[v]))]
+            documents=[v for v in visuals if v.get('document_page')]
+            images = [v for v in visuals if not v.get('document_page') and any(a['start'] < finish and a['end'] > position for a in v.get('appearances',[v]))]
+            if documents:
+                from .handouts import relevant_pages
+                images+=relevant_pages('\n'.join(s['text'] for s in speech),documents)
             first_groups={v.get('content_id',v['id']) for v in visuals if position<=v['capture_ts']<finish and v.get('is_representative',True)}-displayed
             display_ids=[v['id'] for v in sorted(visuals,key=lambda v:v['capture_ts']) if v.get('content_id',v['id']) in first_groups and v.get('is_representative',True)]
             displayed.update(first_groups)
@@ -100,7 +105,8 @@ def build_sections(segments, visuals, windows, unsafe_formulas=()):
                         seen_formulas.add(latex)
                 identity = digest({'ocr':text, 'formulas':formulas})
                 if identity not in seen and (text or formulas):
-                    evidence.append({'id':image['id'], 'time':stamp(image['capture_ts']), 'text':text, 'formula_candidates':formulas})
+                    evidence.append({'id':image['id'], 'time':f'课件第{image["document_page"]}页（无视频时间戳）' if image.get('document_page') else stamp(image['capture_ts']), 'text':text, 'formula_candidates':formulas,
+                        **({'source_type':'原文档文字层；PDF文本顺序不保证公式结构，Office Math公式单独提供'} if image.get('document_page') else {})})
                     seen.add(identity)
             sections.append({'id':f'n{len(sections)+1:04d}', 'start':position, 'end':finish,
                              'title':f'{stamp(position)}—{stamp(finish)}', 'segment_ids':[s['id'] for s in speech],
@@ -109,6 +115,17 @@ def build_sections(segments, visuals, windows, unsafe_formulas=()):
                              'body':'', 'organized':False})
             position = finish
     # An unassigned segment is a pipeline error, not a successful coverage statistic.
+    if sections:
+        # Every original document page reaches the image request, including scans
+        # with no native text. Allocation is context only, never a video timestamp.
+        for section in sections:section['api_visual_ids']=list(section['visual_ids'])
+        documents=[v for v in visuals if v.get('document_page')]
+        sent={i for s in sections for i in s['api_visual_ids']}
+        for index,visual in enumerate(documents):
+            if visual['id'] not in sent:
+                sections[min(len(sections)-1,index*len(sections)//max(1,len(documents)))]['api_visual_ids'].append(visual['id'])
+        # Unmatched original pages stay accessible in the whole-deck browser.
+        sections[0]['visual_ids']=list(dict.fromkeys(sections[0]['visual_ids']+[v['id'] for v in visuals if v.get('document_page')]))
     missing = [s['id'] for s in segments if s['id'] not in assigned]
     if missing:
         raise ValueError(f'字幕时间归属失败：{missing[:5]}')
@@ -150,10 +167,16 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
     cache_dir.mkdir(exist_ok=True)
     prepared = []
     deepseek=is_deepseek(config)
-    system=REVIEW_SYSTEM if review_mode else SYSTEM+(REPAIR_SYSTEM if deepseek else '')
+    image_notes=read_json(Path(output)/'manifest.json',{}).get('slide_mode')=='vision_api'
+    from .slide_review import SLIDE_SYSTEM,source_images,parse_decisions,apply_decisions
+    if image_notes and deepseek and config['model'] not in {'deepseek-flash','deepseek-v4-flash','deepseek-v4-flash-vision-exp'}:
+        return sections,'当前DeepSeek模型不支持本流程的图片输入，请设置deepseek-flash；未退回纯字幕整理'
+    structured=deepseek or image_notes
+    system=REVIEW_SYSTEM if review_mode else SYSTEM+(REPAIR_SYSTEM if structured else '')
+    if image_notes:system+=SLIDE_SYSTEM if not review_mode else '对照课件原图检查已有笔记；仍只返回edits，不返回整章或筛选字段。'
     quality=read_json(Path(output)/'quality.json',{}).get('formulas',{})
     issues={f['id']:f for f in quality.get('syntax',{}).get('errors',[])+quality.get('disagreements',[])}
-    visuals=read_json(Path(output)/'visuals.json',[]) if deepseek and issues or config.get('include_ocr_context') else []
+    visuals=read_json(Path(output)/'visuals.json',[]) if image_notes or deepseek and issues or config.get('include_ocr_context') else []
     deferred=[]
     def source_hash(s):return digest({'speech':s['speech'],'evidence':s['evidence']})
     if review_mode:
@@ -203,19 +226,27 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
         # UTF-8 byte count is a conservative bound for common byte/subword tokenizers.
         bound_in = len((system+user).encode('utf-8'))+128
         base_bound=bound_in
-        items,images,pending=repair_evidence(section,visuals,issues,output,10**9,
-            vision=config['model']=='deepseek-flash') if deepseek else ([],[],[])
+        if image_notes:
+            images,metadata=source_images(section,visuals,output,check)
+            items,pending=[],[]
+            payload=json.loads(user);payload['课件原图目录']=metadata
+            if not review_mode:payload['正文篇幅']=f'优先保留完整定义、推导和答案；正文与逐页slides判断总计不超过{max_out}输出tokens，判断理由简短'
+            user=json.dumps(payload,ensure_ascii=False,separators=(',',':'))
+        else:
+            items,images,pending=repair_evidence(section,visuals,issues,output,10**9,
+                vision=config['model']=='deepseek-flash') if deepseek else ([],[],[])
         deferred.extend(pending)
         if items:
             payload=json.loads(user);payload['待修复公式及对应裁图']=items
             user=json.dumps(payload,ensure_ascii=False,separators=(',',':'))
-        bound_in=len((system+user).encode('utf-8'))+128+len(images)*1024
+        # DeepSeek documents an upper bound of 1024 tokens per image.
+        bound_in=len((system+user).encode('utf-8'))+128+len(images)*((1024 if deepseek else 16384)+96)
         allowance=max(0,allowance-(bound_in-base_bound))
         prepared.append((section,user,bound_in,max_out,items,images,pending))
     representatives={v['id'] for v in visuals if v.get('is_representative',True)}
     ocr_bytes=0
     for index,(section,user,bound_in,max_out,items,images,pending) in enumerate(prepared):
-        if config.get('include_ocr_context'):
+        if config.get('include_ocr_context') and not image_notes:
             evidence=compact_evidence(section,representatives,max(0,allowance//(len(prepared)-index)-256))
             if evidence:
                 payload=json.loads(user);payload['课件文字及未校订公式']=evidence
@@ -224,7 +255,8 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
                 if added<=allowance:
                     user=updated;bound_in+=added;allowance-=added;ocr_bytes+=added
         fingerprint=digest({'model':config['model'],'base_url':config['base_url'],'system':system,'input':users[index],
-            'ocr_candidates':section['evidence'] if config.get('include_ocr_context') else [],
+            'ocr_candidates':section['evidence'] if config.get('include_ocr_context') and not image_notes else [],
+            **({'slide_context':json.loads(user),'slide_mode':'vision_api_v1'} if image_notes else {}),
             'repair_items':items,
             'input_cap':config['input_tokens_per_hour'],
             'images':[{k:i[k] for k in ('id','sha256')} for i in images],'max_output':max_out})
@@ -235,7 +267,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
     estimate = sum((p[2]*config['input_price']+p[3]*config['output_price'])/1e6 for p in uncached)
     write_json(Path(output)/('review_estimate.json' if review_mode else 'api_estimate.json'), {'reserved_input_tokens':sum(p[2] for p in uncached),
         'max_output_tokens':sum(p[3] for p in uncached), 'estimated_max_cny':estimate, 'budget_cny':budget,
-        'context_mode':'full_transcript_with_bounded_ocr' if config.get('include_ocr_context') else 'full_transcript_local_visuals',
+        'context_mode':'transcript_and_original_slides' if image_notes else 'full_transcript_with_bounded_ocr' if config.get('include_ocr_context') else 'full_transcript_local_visuals',
         'ocr_context_bytes':ocr_bytes,'phase':'review' if review_mode else 'organize',
         'visual_source_preserved_locally':True,'repair_in_same_request':deepseek,
         'repair_images':sum(len(p[6]) for p in uncached),'deferred_formula_ids':deferred})
@@ -246,7 +278,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
     for index, (section, user, bound_in, max_out, fingerprint,items,images,pending) in enumerate(prepared):
         check()
         result = read_json(cache_dir/f'{fingerprint}.json')
-        if result and deepseek and not review_mode and result.get('parse_error') and result.get('finish_reason')=='stop':
+        if result and structured and not review_mode and result.get('parse_error') and result.get('finish_reason')=='stop':
             # Revalidate a previously paid response locally after a parser update.
             # Preserve the raw response and its original diagnostic in the same receipt.
             try:
@@ -291,12 +323,15 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
                 if images:
                     content=[{'type':'text','text':user}]
                     for item in images:
-                        content.extend([{'type':'text','text':'公式原图 '+item['id']},
-                            {'type':'image_url','image_url':{'url':item['url']}}])
+                        content.extend([{'type':'text','text':('课件原图 ' if image_notes else '公式原图 ')+item['id']},
+                            {'type':'image_url','image_url':{'url':item['url'],'detail':'high'}}])
                 request={'model':config['model'],'messages':[{'role':'system','content':system},{'role':'user','content':content}],
                          'max_tokens':max_out,'temperature':.2,'stream':False}
                 if deepseek:request['thinking']={'type':'disabled'}
-                if deepseek or review_mode:request['response_format']={'type':'json_object'}
+                if structured or review_mode:request['response_format']={'type':'json_object'}
+                if image_notes and len(json.dumps(request,ensure_ascii=False).encode('utf-8'))>48*1024**2:
+                    settle(request_id,'rejected',actual=0)
+                    raise ValueError('课件请求超过48MiB，未发送或收费；请缩小处理范围')
                 with httpx.Client(timeout=httpx.Timeout(180, connect=20), follow_redirects=False) as client:
                     response = timing.call('review_request' if review_mode else 'organize_request',client.post,config['base_url'].rstrip('/')+'/chat/completions',
                         headers={'Authorization':'Bearer '+config['api_key']},
@@ -320,7 +355,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
                     settle(request_id, 'completed_usage_unknown')
                 repairs=[];parse_error=''
                 omitted=False
-                if deepseek or review_mode:
+                if structured or review_mode:
                     try:body,repairs=parse_review(body,section) if review_mode else parse_repair(body,section,items)
                     except (ValueError,TypeError):body='';parse_error='复核输出格式不完整或修订无法定位，原笔记已保留' if review_mode else '整理输出格式无效'
                     if not parse_error and not review_mode:omitted=repair_payload(response_body).get('omit') is True and not body.strip()
@@ -373,6 +408,9 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
         section['omitted']=result.get('omitted',False)
         section['editorial_notes']=result.get('editorial_notes',[])
         section['organized'] = not result.get('incomplete', False)
+        if image_notes:
+            section['slide_image_ids']=[i['id'] for i in images]
+            section['slide_decisions'],section['slide_review_warning']=parse_decisions(result.get('response_body',''),section['slide_image_ids'])
         section['repairs'] = result.get('repairs',[])
         section['deferred_formula_ids'] = result.get('deferred_formula_ids',[])
         if review_each and not section.get('omitted'):
@@ -383,6 +421,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
             section['warning'] = result.get('parse_error') or '接口输出为空、格式异常或达到长度上限，当前章节尚不完整；未自动重试'
         else:section.pop('warning',None)
         write_json(notes_file,sections)
+        if image_notes:apply_decisions(output,sections)
         write_json(Path(output)/'note_repairs.json',{'status':'ai_suggested','originals_preserved':True,
             'sections':[{'id':s['id'],'time':s['title'],'repairs':s.get('repairs',[]),
                 'deferred_formula_ids':s.get('deferred_formula_ids',[])} for s in sections if s.get('repairs') or s.get('deferred_formula_ids')]})
