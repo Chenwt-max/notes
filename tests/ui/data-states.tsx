@@ -2,18 +2,20 @@ import React,{act} from 'react';
 import assert from 'node:assert/strict';
 
 export async function run(){
- const mode=process.argv[3]||'library-empty',catalog=mode.startsWith('catalog'),deep=mode==='catalog-deep',creating=mode==='catalog-create';let fail=mode!=='library-empty'&&!creating,created=false;
+ const mode=process.argv[3]||'library-empty',catalog=mode.startsWith('catalog'),deep=mode==='catalog-deep',creating=mode==='catalog-create',models=mode==='settings-model';let fail=mode!=='library-empty'&&!creating&&!models,created=false;
  Object.defineProperty(globalThis,'location',{value:window.location,configurable:true});
- window.location.hash=catalog?(deep?'#/collection/fixture':'#/home'):'#/library';localStorage.setItem('course-reduce-motion','true');document.body.innerHTML='<div id="root"></div>';
+ window.location.hash=models?'#/settings/models':catalog?(deep?'#/collection/fixture':'#/home'):'#/library';localStorage.setItem('course-reduce-motion','true');document.body.innerHTML='<div id="root"></div>';
  const calls:string[]=[];
  globalThis.fetch=(async(url:any,options:any={})=>{
   const path=String(url);calls.push(path);if(creating&&options.method==='POST'&&path.endsWith('/courses')){created=true;return {ok:true,json:async()=>({id:'created',title:'新课程',lessons:[]})};}assert.equal(options.method,'GET');
   if(fail&&path.endsWith(catalog?'/courses':'/library'))throw new Error('fixture: 本地读取失败');
-  return {ok:true,json:async()=>path.endsWith('/preparation')?{portable:false,ready:true}:created&&path.endsWith('/courses')?[{id:'created',title:'新课程',lessons:[]}]:deep&&path.endsWith('/courses')?[{id:'fixture',title:'恢复后的课程',lessons:[]}]:[]};
+  return {ok:true,json:async()=>path.endsWith('/settings')?{formula_model:'PaddleOCR-VL-1.6',person_model:'yolox-s',device:'cpu'}:path.endsWith('/preparation')?{portable:false,ready:true}:created&&path.endsWith('/courses')?[{id:'created',title:'新课程',lessons:[]}]:deep&&path.endsWith('/courses')?[{id:'fixture',title:'恢复后的课程',lessons:[]}]:[]};
  }) as any;
  const tick=async()=>{await new Promise(resolve=>setTimeout(resolve,30));};
  await act(async()=>{await import('../../frontend/src/main');await tick();});await act(tick);
- if(creating){
+ if(models){
+  assert(document.querySelector('.model-summary b')?.textContent?.includes('YOLOX-S · CPU'),'Model summary must match the saved person model');
+ }else if(creating){
   await act(async()=>{(document.querySelector('.hero-copy>.primary') as HTMLButtonElement).click();await tick();});
   const input=document.querySelector('form input')!;
   await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value')!.set!.call(input,'新课程');input.dispatchEvent(new Event('input',{bubbles:true}));await tick();});

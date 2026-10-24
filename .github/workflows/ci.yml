@@ -38,6 +38,12 @@ jobs:
           node tests/ui/run.mjs tests/ui/data-states.tsx catalog-failed
           node tests/ui/run.mjs tests/ui/data-states.tsx catalog-deep
           node tests/ui/run.mjs tests/ui/data-states.tsx catalog-create
+          node tests/ui/run.mjs tests/ui/data-states.tsx settings-model
+      - name: Model preparation recovery and control ordering
+        run: |
+          node tests/ui/run.mjs tests/ui/preparation-state.tsx read-failure
+          node tests/ui/run.mjs tests/ui/preparation-state.tsx read-race
+          node tests/ui/run.mjs tests/ui/preparation-state.tsx post-failure
       - name: Concurrent read ordering and recovery
         run: |
           node tests/ui/run.mjs tests/ui/read-order.tsx detail-latest
