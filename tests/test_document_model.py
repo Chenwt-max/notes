@@ -32,7 +32,7 @@ def test_document_factory_uses_pinned_local_v16_and_single_batch(tmp_path,monkey
     assert options['use_ocr_for_image_block']
 
 
-def test_model_settings_migrate_and_new_jobs_capture_current_model(tmp_path,monkeypatch):
+def test_model_settings_migrate_and_new_jobs_capture_current_model(tmp_path,monkeypatch,prepared_models):
     monkeypatch.setattr(settings,'DATA',tmp_path/'config')
     monkeypatch.setattr(store,'DATA',tmp_path/'db')
     monkeypatch.setattr(server,'WORKSPACE',tmp_path)

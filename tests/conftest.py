@@ -5,6 +5,12 @@ import pytest
 
 
 @pytest.fixture
+def prepared_models(monkeypatch):
+    from lecture_notes import preparation
+    monkeypatch.setattr(preparation,'state',lambda:{'ready':True})
+
+
+@pytest.fixture
 def sample_video(tmp_path):
     path=tmp_path/'自制 示例.mp4'
     writer=cv2.VideoWriter(str(path),cv2.VideoWriter_fourcc(*'mp4v'),4,(640,360))

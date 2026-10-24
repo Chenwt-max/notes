@@ -22,6 +22,25 @@ def test_portable_paths_follow_relocated_root(tmp_path,monkeypatch):
     assert runtime.python_for('asr')==root/'.venv-asr/Scripts/python.exe'
 
 
+@pytest.mark.parametrize('ready',[False,True])
+def test_portable_job_creation_requires_verified_models(tmp_path,monkeypatch,ready):
+    monkeypatch.setattr(runtime,'PORTABLE',True)
+    monkeypatch.setattr(preparation,'state',lambda:{'ready':ready})
+    monkeypatch.setattr(settings,'DATA',tmp_path/'config')
+    monkeypatch.setattr(store,'DATA',tmp_path/'db')
+    monkeypatch.setattr(store,'OUTPUT',tmp_path/'out')
+    monkeypatch.setattr(server,'WORKSPACE',tmp_path)
+    monkeypatch.setattr(server,'probe',lambda _: {'duration':10})
+    video=tmp_path/'course.mp4';video.write_bytes(b'fixture-not-decoded')
+    response=TestClient(server.app).post('/api/jobs',json={'path':str(video)})
+    if ready:
+        assert response.status_code==200,response.text
+        assert len(store.list_jobs())==1
+    else:
+        assert response.status_code==400 and '模型准备' in response.json()['detail']
+        assert store.list_jobs()==[]
+
+
 def test_foreign_account_key_does_not_block_existing_documents(tmp_path,monkeypatch):
     monkeypatch.setattr(settings,'DATA',tmp_path)
     monkeypatch.setattr(settings,'SESSION_KEY','')

@@ -13,7 +13,7 @@ def test_local_api_redacts_key_and_rejects_foreign_origin(tmp_path,monkeypatch):
     assert client.put('/api/settings',json={},headers={'Origin':'https://example.invalid'}).status_code==403
 
 
-def test_job_creation_and_artifact_boundary(tmp_path,monkeypatch):
+def test_job_creation_and_artifact_boundary(tmp_path,monkeypatch,prepared_models):
     monkeypatch.setattr(store,'DATA',tmp_path/'db')
     monkeypatch.setattr(store,'OUTPUT',tmp_path/'out')
     monkeypatch.setattr(server,'OUTPUT',tmp_path/'out')
@@ -50,7 +50,7 @@ def test_review_queues_existing_job_and_rejects_running_job(tmp_path,monkeypatch
     assert client.post(f"/api/jobs/{job['id']}/review").status_code==400
 
 
-def test_duplicate_creation_needs_explicit_confirmation(tmp_path,monkeypatch):
+def test_duplicate_creation_needs_explicit_confirmation(tmp_path,monkeypatch,prepared_models):
     monkeypatch.setattr(store,'DATA',tmp_path/'db')
     monkeypatch.setattr(store,'OUTPUT',tmp_path/'out')
     monkeypatch.setattr(server,'WORKSPACE',tmp_path)
