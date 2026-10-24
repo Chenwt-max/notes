@@ -11,16 +11,21 @@ export async function run(){
  globalThis.setTimeout=((run:()=>void)=>{timers.set(++sequence,run);return sequence;}) as any;
  globalThis.clearTimeout=((id:number)=>{timers.delete(id);}) as any;
  const request=async(_url:string,method='GET')=>{
-  if(method==='POST'){posts++;if(mode==='post-failure')throw new Error('准备请求暂未确认');return status(true);}
+  if(method==='POST'){posts++;if(mode==='post-failure')throw new Error('准备请求暂未确认');return status(!_url.endsWith('/cancel'));}
   gets++;if(fail)throw new Error('读取中断');
+  if(mode==='cancel-after-read-failure'&&gets>1)throw new Error('读取暂不可用');
   if(mode==='read-race'&&gets===2)return new Promise(resolve=>{resolveOld=resolve;});
-  return status();
+  return status(mode==='cancel-after-read-failure');
  };
  const button=(name:string)=>[...host.querySelectorAll('button')].find(x=>x.textContent===name);
  const click=async(name:string)=>{assert(button(name),`Missing ${name}`);await act(async()=>button(name)!.click());};
  try{
   await act(async()=>root.render(<ModelPreparation request={request} close={()=>{}} notify={()=>{}}/>));
-  if(mode==='read-failure'){
+  if(mode==='cancel-after-read-failure'){
+   const timer=timers.entries().next().value!;timers.delete(timer[0]);await act(async()=>{timer[1]();});
+   assert(host.querySelector('[role="alert"]'));assert(!button('取消下载并保留断点')?.disabled,'A failed status read must not prevent cancelling a running preparation');
+   await click('取消下载并保留断点');assert.equal(posts,1);assert(!host.querySelector('[role="alert"]'));assert(button('下载并校验模型'));
+  }else if(mode==='read-failure'){
    assert(!host.textContent?.includes('正在读取准备状态'),'A failed read must not pretend to keep loading');
    assert(host.querySelector('[role="alert"]')?.textContent?.includes('读取中断'));
    fail=false;const count=gets;await click('重新读取');assert.equal(gets,count+1);assert.equal(posts,0);

@@ -44,6 +44,7 @@ jobs:
           node tests/ui/run.mjs tests/ui/preparation-state.tsx read-failure
           node tests/ui/run.mjs tests/ui/preparation-state.tsx read-race
           node tests/ui/run.mjs tests/ui/preparation-state.tsx post-failure
+          node tests/ui/run.mjs tests/ui/preparation-state.tsx cancel-after-read-failure
       - name: Concurrent read ordering and recovery
         run: |
           node tests/ui/run.mjs tests/ui/read-order.tsx detail-latest
