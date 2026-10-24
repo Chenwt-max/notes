@@ -2,9 +2,9 @@
 
 本地课程视频与可选原课件 → 本地字幕和课件精简 → 多模态 API 整理 → 可追溯的学习笔记。
 
-[下载 Windows 便携版](https://github.com/Chenwt-max/notes/releases/tag/v1.0.0-rc.1) · [使用指南](docs/USER_GUIDE.md) · [架构说明](docs/ARCHITECTURE.md) · [已知限制](docs/LIMITATIONS.md)
+[下载源码](https://github.com/Chenwt-max/notes/archive/refs/heads/main.zip) · [便携包发布页（待发布）](https://github.com/Chenwt-max/notes/releases) · [使用指南](docs/USER_GUIDE.md) · [架构说明](docs/ARCHITECTURE.md) · [已知限制](docs/LIMITATIONS.md)
 
-首个公开版本为 **1.0.0-rc.1**。已有功能与本机验证结果随项目交付；独立干净 Windows、人工听写金标和未完成的界面异常状态保留为待验收，见[验收记录](docs/ACCEPTANCE.md)。
+当前公开的是源码，**Windows 便携包尚未发布**；候选目标版本为 1.0.0-rc.1。源码维护更新及验证边界见[更新记录](docs/UPDATES_20261024.md)。已有功能与本机验证结果随项目交付；独立干净 Windows、人工听写金标和未完成的界面异常状态保留为待验收，见[验收记录](docs/ACCEPTANCE.md)。
 
 Windows 桌面浏览器应用。音频与视频留在本机，字幕本地转写；本地图像算法、YOLOX 遮挡辅助和 PaddleOCR-VL-1.6 筛选课件。主动整理时将字幕和精简后的课件原图发送到配置的多模态 API，直接读取文字和公式，并判断重复、非课件与动画终态。有限样本通过不代表所有课程零错误。
 
@@ -13,6 +13,8 @@ Windows 桌面浏览器应用。音频与视频留在本机，字幕本地转写
 上图来自2分钟自制短课的实际提取、整理及反馈复核结果；合成语音示例不代表真实课堂准确率。
 
 ## Windows 便携使用
+
+以下步骤适用于附件发布后。现在可先按“开发与回归”安装源码；请勿把未发布的便携包视为当前源码版本。
 
 1. 从 Releases 下载全部 4 个 `.partNNN` 分卷、`release-manifest.json`、`merge-release.ps1` 和 `合并并解压.cmd`，放在同一目录，双击合并并解压入口。支持中文和空格路径，不要在压缩包中直接启动。
 2. 双击 `notes.cmd`。无需另外安装 Python、Node 或 FFmpeg；NVIDIA GPU 路径仍需要系统显卡驱动。

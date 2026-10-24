@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from .common import ROOT, WORKSPACE, OUTPUT, DATA, read_json, write_json, safe_child
 from .store import list_jobs, create_job, get_job, update_job, connect, usage_for,JOB_LOCKS,request_delete,DELETING
 from .settings import settings, save_settings
-from .media import probe, image_at
+from .media import probe, image_at,displayed_image_at
 from .pipeline import attach_formulas, validate_windows
 from .export import export_notes
 from .synthesis import build_sections, is_note_reviewed
@@ -417,7 +417,7 @@ def source_frame(job_id:str,source_id:str,full:bool=False):
         return FileResponse(safe_child(output,record['image']),media_type='image/png')
     path=source(job['spec']['path']);manifest=read_json(output/'manifest.json',{})
     if manifest.get('source')!=source_identity(path):raise ValueError('源视频已变化，无法按原记录恢复')
-    image=image_at(path,record['capture_ts'])
+    image=displayed_image_at(path,record['capture_ts'])
     if record.get('quad') and not full:image=crop_quad(image,record['quad'])
     ok,data=cv2.imencode('.png',image)
     if not ok:raise ValueError('来源画面编码失败')

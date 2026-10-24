@@ -54,11 +54,11 @@ def image_at(path, second, *, with_timestamp=False):
     return (image, actual) if with_timestamp else image
 
 
-def native_frame(capture, path, requested):
+def native_frame(capture, path, requested, *, not_after=False):
     capture.set(cv2.CAP_PROP_POS_MSEC, requested*1000)
     ok, selected = capture.read()
     actual = capture.get(cv2.CAP_PROP_POS_MSEC)/1000
-    if ok and actual>requested+.1:
+    if ok and actual>requested+(1e-6 if not_after else .1):
         # A low/VFR seek can land on the next page. Its preceding decoded frame
         # is the state still displayed at the requested terminal time.
         previous=max(0,int(capture.get(cv2.CAP_PROP_POS_FRAMES))-2)
@@ -66,9 +66,24 @@ def native_frame(capture, path, requested):
         valid, prior=capture.read()
         prior_time=capture.get(cv2.CAP_PROP_POS_MSEC)/1000
         if valid and 0<=prior_time<=requested:return prior,prior_time
+        if not_after:raise ValueError(f'无法定位 {requested:.2f} 秒之前的原始画面；未使用下一页')
+    if not_after:
+        if ok:return selected,actual
+        fps=capture.get(cv2.CAP_PROP_FPS);count=capture.get(cv2.CAP_PROP_FRAME_COUNT)
+        if fps>0 and count>=1 and (count-1)/fps<=requested<count/fps:
+            capture.set(cv2.CAP_PROP_POS_FRAMES,int(count)-1)
+            valid,final=capture.read();final_time=capture.get(cv2.CAP_PROP_POS_MSEC)/1000
+            if valid and 0<=final_time<=requested:return final,final_time
+        raise ValueError(f'无法定位 {requested:.2f} 秒之前的原始画面；未使用下一页')
     if not ok or abs(actual-requested)>.1:
         return image_at(path, requested, with_timestamp=True)
     return selected, actual
+
+
+def displayed_image_at(path,second):
+    capture=cv2.VideoCapture(str(path),cv2.CAP_FFMPEG)
+    try:return native_frame(capture,path,second,not_after=True)[0]
+    finally:capture.release()
 
 
 def audio_chunk(path, start, end, output):

@@ -41,3 +41,14 @@ def test_low_fps_terminal_capture_does_not_take_future_content(low_fps_video,req
     finally:capture.release()
     assert actual==pytest.approx(expected,abs=.02)
     assert np.array_equal(frame,image_at(low_fps_video,expected))
+
+
+def test_strict_hd_recovery_preserves_terminal_frame_and_rejects_outside_video(low_fps_video):
+    capture=cv2.VideoCapture(str(low_fps_video))
+    try:
+        frame,actual=native_frame(capture,low_fps_video,1.8,not_after=True)
+        assert actual==pytest.approx(1.5,abs=.02)
+        assert np.array_equal(frame,image_at(low_fps_video,1.5))
+        with pytest.raises(ValueError,match='未使用下一页'):
+            native_frame(capture,low_fps_video,20,not_after=True)
+    finally:capture.release()

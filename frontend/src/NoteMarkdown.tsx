@@ -1,3 +1,4 @@
+import {memo} from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -9,6 +10,6 @@ export function mathMarkdown(markdown:string){
   .replace(/\\\(([\s\S]*?)\\\)/g,(_,latex)=>`$${latex.trim()}$`)).join('');
 }
 
-export default function NoteMarkdown({children}:{children:string}){
+export default memo(function NoteMarkdown({children}:{children:string}){
  return <ReactMarkdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[[rehypeKatex,{strict:false,throwOnError:false}]]}>{mathMarkdown(children)}</ReactMarkdown>;
-}
+});

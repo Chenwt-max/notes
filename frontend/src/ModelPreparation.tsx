@@ -1,10 +1,12 @@
 import React,{useEffect,useState} from 'react';
+import useVisiblePolling from './useVisiblePolling';
 
 type Request=(url:string,method?:string,body?:unknown)=>Promise<any>;
 export default function ModelPreparation({request,close,notify}:{request:Request;close:()=>void;notify:(message:string)=>void}){
  const [value,setValue]=useState<any>(),[working,setWorking]=useState(false),[error,setError]=useState('');
- const load=()=>request('/preparation').then(setValue).catch(e=>setError(e.message));
- useEffect(()=>{load();const timer=setInterval(load,1000);return()=>clearInterval(timer);},[]);
+ const load=()=>request('/preparation').then(v=>{setValue(v);setError('');}).catch(e=>setError(e.message));
+ useEffect(()=>{load();},[]);
+ useVisiblePolling(load,value?.running?1000:15000);
  const control=async(action:string)=>{setWorking(true);try{setValue(await request('/preparation/'+action,'POST',{}));setError('');}catch(e){notify((e as Error).message);}finally{setWorking(false);}};
  const gib=(size:number)=>((size||0)/1024**3).toFixed(2)+' GiB';
  const progress=value?.total_bytes?Math.min(100,(value.completed_bytes||0)/value.total_bytes*100):0;

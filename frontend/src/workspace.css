@@ -49,6 +49,54 @@
 .app .slide-preview{padding:10px;min-height:max-content;flex-shrink:0}
 .app .slide-preview>img{height:auto;max-height:none;object-fit:contain}
 .app .slide-supplements{flex-shrink:0;margin:0 22px 20px;background:#edf6f7;border:0;color:#367789;font-size:17px}
+.slide-panel-options{display:flex;flex-wrap:wrap;gap:8px;margin:0 22px 18px;flex-shrink:0}
+.app .slide-panel-options .slide-supplements{flex:1;margin:0;padding:10px 12px;line-height:1.5;border-radius:14px}
+.appearance-intro{display:flex;align-items:center;gap:20px}
+.appearance-intro>div:last-child{min-width:0}
+.app .appearance-intro .form-emblem{margin:0;flex-shrink:0}
+.app .appearance-settings .appearance-title{font-size:26px;line-height:1.5;margin:0 0 8px;font-weight:600}
+.app .appearance-settings .muted{font-size:19px;line-height:1.75}
+.app .appearance-settings .motion-choice{gap:24px;margin:28px 0 20px;padding:28px 0;min-height:100px}
+.appearance-settings .motion-choice>span:first-child{flex:1;min-width:0}
+.app .appearance-settings .motion-choice b{font-size:21px;line-height:1.5;font-weight:600}
+.app .appearance-settings .motion-choice small{font-size:18px;line-height:1.75}
+.motion-choice .motion-control{flex-direction:row;align-items:center;gap:14px;flex-shrink:0;min-height:44px}
+.motion-state{font-size:17px;color:#586575;white-space:nowrap}
+.app .appearance-settings .motion-choice input{width:56px;height:32px;min-width:56px;min-height:32px;margin:0;padding:0;border:1px solid #748293;background:#8b95a3;box-shadow:inset 0 1px 2px #22304215}
+.app .appearance-settings .motion-choice input:before{width:24px;height:24px;top:3px;left:3px;background:#fff;box-shadow:0 1px 4px #17233130}
+.app .appearance-settings .motion-choice input:checked{border-color:#0071e3;background:#0071e3}
+.app .appearance-settings .motion-choice input:checked:before{transform:translateX(24px)}
+.app .appearance-settings .motion-choice input:focus-visible{outline:3px solid #0071e3;outline-offset:4px}
+.appearance-hint{font-size:17px;line-height:1.75;color:#66707c}
+.app .check{align-items:center;gap:12px;min-height:44px}
+.app .check input{width:20px;height:20px;min-width:20px;min-height:20px;flex-shrink:0}
+.app .resource-presets>button[aria-pressed=true]{border-color:#82b5df;background:#eef6ff;box-shadow:inset 0 0 0 1px #82b5df}
+.settings-load-error{display:grid;justify-items:start;gap:16px;padding:28px;border-radius:20px;background:#fff}
+@media(max-width:600px){
+ .appearance-intro{align-items:flex-start;gap:14px}
+ .app .appearance-settings .appearance-title{font-size:23px}
+ .app .appearance-settings .motion-choice{gap:16px;flex-wrap:wrap}
+ .appearance-settings .motion-choice>span:first-child{flex-basis:220px}
+ .motion-choice .motion-control{margin-left:auto}
+}
+@media(forced-colors:active){
+ .app .appearance-settings .motion-choice input{border:1px solid ButtonText;background:Canvas}
+ .app .appearance-settings .motion-choice input:before{background:ButtonText}
+ .app .appearance-settings .motion-choice input:checked{background:Highlight}
+ .app .appearance-settings .motion-choice input:checked:before{background:HighlightText}
+}
+.slide-panel-options .slide-supplements[aria-pressed=true]{background:#dceff2;color:#235f71}
+.slide-viewport{position:relative}
+.slide-viewer[open]{display:flex;flex-direction:column;height:min(940px,calc(100dvh - 40px))}
+.slide-viewer>header,.slide-viewer-tools,.slide-viewer>footer{flex-shrink:0}
+.slide-viewer>footer{margin:0}
+.slide-viewer .slide-viewport{flex:1;min-height:0;height:auto}
+.slide-viewer .slide-viewport.fit img{width:100%;height:100%;object-fit:contain}
+.slide-image-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;background:#edf1f5;color:#647486;font-size:18px}
+.slide-image-loading svg{animation:slide-image-spin 1.2s linear infinite}
+@keyframes slide-image-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.slide-image-loading svg{animation:none}}
+.app[data-motion=reduced] .slide-image-loading svg{animation:none}
 @media(min-width:1800px){.app .feature-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.app .collection-grid{gap:36px}.app .reader-toolbar{padding-block:20px}}
 @media(max-width:900px){
  .app .hierarchy-main,.app.reading-mode .hierarchy-main{padding:28px 20px 64px}

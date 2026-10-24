@@ -6,7 +6,7 @@ export default function ResourceControls({value,set}:{value:Config;set:(v:Config
  const preset=(fast:boolean)=>set({...value,processing_mode:fast?'fast':'listening',cpu_threads:fast?Math.min(4,cores):Math.min(2,cores),gpu_concurrency:1,max_concurrent_jobs:fast?0:1});
  return <>
   <p className="muted">选择听课时的轻负载，或离开时的连续处理。</p>
-  <div className="resource-presets"><button type="button" onClick={()=>preset(false)}><Headphones size={20}/><span><b>听课优先</b><small>轻负载、单课程，为播放留出余量</small></span></button><button type="button" onClick={()=>preset(true)}><Gauge size={20}/><span><b>快速并发</b><small>连续处理，多课程同时推进</small></span></button></div>
+  <div className="resource-presets"><button type="button" aria-pressed={value.processing_mode==='listening'} onClick={()=>preset(false)}><Headphones size={20}/><span><b>听课优先</b><small>轻负载、单课程，为播放留出余量</small></span></button><button type="button" aria-pressed={value.processing_mode==='fast'} onClick={()=>preset(true)}><Gauge size={20}/><span><b>快速并发</b><small>连续处理，多课程同时推进</small></span></button></div>
   <label className="field">本地推理设备<select value={value.device} onChange={e=>set({...value,device:e.target.value})}><option value="cuda">NVIDIA GPU · 显卡</option><option value="cpu">CPU · 处理器</option></select></label>
   <div className="two">
    <label className="field">每个任务的CPU线程数<input type="number" min="1" max={cores} step="1" value={value.cpu_threads??2} onChange={e=>set({...value,cpu_threads:Number(e.target.value)})}/><small>本机 {cores} 个逻辑处理器</small></label>

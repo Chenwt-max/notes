@@ -125,7 +125,8 @@ def run_formula(job_id, output, callback, check):
 
 def run_screening(output,callback,check):
     from .runtime import python_for
-    visuals=read_json(output/'visuals.json',[])
+    from .slide_review import screening_targets
+    visuals=screening_targets(read_json(output/'visuals.json',[]))
     def ready(v):
         cached=read_json(output/'screening_cache'/f"{v['id']}.json",{})
         return cached.get('model')==DOCUMENT_MODEL and cached.get('version')==1 and cached.get('image_sha256')==hashlib.sha256((output/v['image']).read_bytes()).hexdigest()

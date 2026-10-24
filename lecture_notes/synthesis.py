@@ -193,7 +193,8 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
     minimum=min(1024,int(limit_out/len(needed)))
     remainder=max(0,limit_out-minimum*len(needed))
     output_bounds=[min(int(config['max_output_tokens']),max(1,minimum+int((s['end']-s['start'])/seconds*remainder))) for s in needed]
-    if review_mode:output_bounds=[min(int(config['max_output_tokens']),1600) for s in needed]
+    thinking_review=bool(review_mode and image_notes and deepseek)
+    if review_mode:output_bounds=[int(config.get('review_max_output_tokens',16384)) if thinking_review else min(int(config['max_output_tokens']),1600) for s in needed]
     users=[]
     context=sections if context_sections is None else context_sections
     for section,max_out in zip(needed,output_bounds):
@@ -216,7 +217,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
             payload['已有笔记']=section['body']
             if section.get('review_feedback'):payload['上次复核需要解决的问题']=section['review_feedback'][:1000]
             payload['相邻章节线索']=[{'时段':s['title'],'提纲':re.findall(r'^#{1,3} .+',s.get('body',''),re.M)} for s in sections[max(0,index-1):index+2] if s is not section]
-            payload['输出要求']=f'独立检查正确性，按重要性最多提交{max(1,min(12,max_out//400))}条精确修订；不输出整章正文。'
+            payload['输出要求']=f'只修复改变真值的错误，包括标题与正文条件不一致。先比较全章同一符号的定义与例题代入，不为措辞润色或补充背景修改。最多提交{max(1,min(12,max_out//400))}条精确修订；不输出整章正文。'
         else:payload['正文篇幅']=f'不超过{max(80,int(max_out*.38))}字，优先保留知识和公式；识别修订最多2条，其他明确错字直接在正文修正'
         users.append(json.dumps(payload,ensure_ascii=False,separators=(',',':')))
     base_input=sum(len((system+user).encode('utf-8'))+128 for user in users)
@@ -257,6 +258,7 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
         fingerprint=digest({'model':config['model'],'base_url':config['base_url'],'system':system,'input':users[index],
             'ocr_candidates':section['evidence'] if config.get('include_ocr_context') and not image_notes else [],
             **({'slide_context':json.loads(user),'slide_mode':'vision_api_v1'} if image_notes else {}),
+            **({'review_thinking':'low_stream_v1'} if thinking_review else {}),
             'repair_items':items,
             'input_cap':config['input_tokens_per_hour'],
             'images':[{k:i[k] for k in ('id','sha256')} for i in images],'max_output':max_out})
@@ -327,13 +329,18 @@ def organize(job_id, sections, seconds, output, config, callback, check,reuse_co
                             {'type':'image_url','image_url':{'url':item['url'],'detail':'high'}}])
                 request={'model':config['model'],'messages':[{'role':'system','content':system},{'role':'user','content':content}],
                          'max_tokens':max_out,'temperature':.2,'stream':False}
-                if deepseek:request['thinking']={'type':'disabled'}
+                if deepseek:request['thinking']={'type':'enabled' if thinking_review else 'disabled'}
+                if thinking_review:
+                    request['reasoning_effort']='low'
+                    request.pop('temperature',None)
                 if structured or review_mode:request['response_format']={'type':'json_object'}
                 if image_notes and len(json.dumps(request,ensure_ascii=False).encode('utf-8'))>48*1024**2:
                     settle(request_id,'rejected',actual=0)
                     raise ValueError('课件请求超过48MiB，未发送或收费；请缩小处理范围')
                 with httpx.Client(timeout=httpx.Timeout(180, connect=20), follow_redirects=False) as client:
-                    response = timing.call('review_request' if review_mode else 'organize_request',client.post,config['base_url'].rstrip('/')+'/chat/completions',
+                    from .chat_stream import stream_chat
+                    post=(lambda url,**kw:stream_chat(client,url,check=check,**kw)) if thinking_review else client.post
+                    response = timing.call('review_request' if review_mode else 'organize_request',post,config['base_url'].rstrip('/')+'/chat/completions',
                         headers={'Authorization':'Bearer '+config['api_key']},
                         json=request)
                 if response.status_code in {400,401,402,403,404,429}:

@@ -142,11 +142,42 @@ def test_budget_counts_images_and_refuses_before_call(context,monkeypatch):
     assert '额度' in message and not calls and not store.usage_for(job)['calls']
 
 
+@pytest.mark.parametrize('complete',[True,False])
+def test_thinking_review_settles_full_usage_and_never_replays_partial_stream(context,monkeypatch,complete):
+    path,job,sections,config=context
+    sections[0].update(body='## 定义\n\n旧数值。',organized=True)
+    original_client=httpx.Client;calls=[]
+    def handle(request):
+        data=json.loads(request.content);calls.append(data)
+        assert data['thinking']=={'type':'enabled'} and data['reasoning_effort']=='low'
+        assert data['max_tokens']==config['review_max_output_tokens']==16384
+        answer=json.dumps({'edits':[{'before':'旧数值。','after':'已核算的数值。','reason':'代回定义'}]})
+        chunks=[{'choices':[{'delta':{'content':answer},'finish_reason':'stop'}]},
+                {'choices':[],'usage':{'prompt_tokens':3500,'completion_tokens':8000}}]
+        lines=['data: '+json.dumps(c) for c in chunks]
+        if complete:lines.append('data: [DONE]')
+        return httpx.Response(200,text='\n'.join(lines))
+    monkeypatch.setattr(httpx,'Client',lambda **kw:original_client(transport=httpx.MockTransport(handle)))
+    if complete:
+        result,message=synthesis.organize(job,sections,60,path,config,lambda *_:None,lambda:None,review_mode=True)
+        assert not message and '已核算的数值' in result[0]['body']
+        receipt=store.usage_for(job)['calls'][0]
+        assert receipt['status']=='completed' and receipt['output_tokens']==8000 and receipt['reserved']>=receipt['actual']
+    else:
+        with pytest.raises(ValueError,match='未能确认完成'):
+            synthesis.organize(job,sections,60,path,config,lambda *_:None,lambda:None,review_mode=True)
+        result=sections
+        assert result[0]['body']=='## 定义\n\n旧数值。'
+        assert store.usage_for(job)['calls'][0]['status']=='uncertain'
+    synthesis.organize(job,result,60,path,config,lambda *_:None,lambda:None,review_mode=True)
+    assert len(calls)==1
+
+
 def test_image_source_is_native_resolution_and_recovered_only_once(tmp_path,monkeypatch):
     from lecture_notes import media
     visuals=images(tmp_path);calls=[]
     write_json(tmp_path/'manifest.json',{'source':{'path':'public-fixture.mp4'},'sha256':'fixture-hash'})
-    monkeypatch.setattr(media,'image_at',lambda *a:(calls.append(a) or np.full((1080,1920,3),255,np.uint8)))
+    monkeypatch.setattr(media,'native_frame',lambda *a,**kw:(calls.append(a) or (np.full((1080,1920,3),255,np.uint8),0)))
     section={'end':60,'visual_ids':['v0']}
     first,_=slide_review.source_images(section,visuals,tmp_path)
     second,_=slide_review.source_images(section,visuals,tmp_path)
@@ -154,6 +185,45 @@ def test_image_source_is_native_resolution_and_recovered_only_once(tmp_path,monk
     import base64
     image=cv2.imdecode(np.frombuffer(base64.b64decode(first[0]['url'].split(',')[1]),np.uint8),1)
     assert image.shape[:2]==(1080,1920)
+
+
+@pytest.mark.parametrize('capture_ts',[.8,.98])
+def test_hd_api_image_preserves_the_page_displayed_before_a_cut(tmp_path,capture_ts):
+    import base64
+    from lecture_notes.common import digest
+    video=tmp_path/'two-pages.mp4'
+    writer=cv2.VideoWriter(str(video),cv2.VideoWriter_fourcc(*'mp4v'),1,(320,180))
+    assert writer.isOpened()
+    for value in (35,210):writer.write(np.full((180,320,3),value,np.uint8))
+    writer.release()
+    visuals=[{'id':'v0','image':'thumb.png','capture_ts':capture_ts}]
+    cv2.imwrite(str(tmp_path/'thumb.png'),np.full((90,160,3),35,np.uint8))
+    write_json(tmp_path/'manifest.json',{'source':{'path':str(video)},'sha256':'fixture'})
+    stale=tmp_path/'api_images'/(digest({'source':'fixture','id':'v0','time':capture_ts,'quad':None})+'.png')
+    stale.parent.mkdir()
+    cv2.imwrite(str(stale),np.full((180,320,3),210,np.uint8))
+    result,_=slide_review.source_images({'end':1,'visual_ids':['v0']},visuals,tmp_path)
+    image=cv2.imdecode(np.frombuffer(base64.b64decode(result[0]['url'].split(',')[1]),np.uint8),1)
+    assert image.shape[:2]==(180,320)
+    assert image.mean()<80, 'HD recovery must not take the next slide after the requested time'
+
+
+def test_original_image_viewer_preserves_the_same_page_as_api(tmp_path,monkeypatch):
+    from lecture_notes import server
+    from lecture_notes.common import source_identity
+    video=tmp_path/'viewer.mp4'
+    writer=cv2.VideoWriter(str(video),cv2.VideoWriter_fourcc(*'mp4v'),1,(320,180))
+    assert writer.isOpened()
+    for value in (35,210):writer.write(np.full((180,320,3),value,np.uint8))
+    writer.release()
+    monkeypatch.setattr(store,'DATA',tmp_path/'data');monkeypatch.setattr(store,'OUTPUT',tmp_path/'jobs')
+    monkeypatch.setattr(server,'OUTPUT',store.OUTPUT);monkeypatch.setattr(server,'WORKSPACE',tmp_path)
+    job=store.create_job({'path':str(video)})['id'];output=store.OUTPUT/job
+    write_json(output/'manifest.json',{'source':source_identity(video)})
+    write_json(output/'source_records.json',[{'id':'v0','capture_ts':.98}])
+    response=server.source_frame(job,'v0')
+    image=cv2.imdecode(np.frombuffer(response.body,np.uint8),1)
+    assert image.mean()<80, 'Original-image modal must show the same displayed frame as API input'
 
 
 def test_scanned_document_every_page_reaches_image_requests_without_fake_times(tmp_path):
@@ -182,6 +252,18 @@ def test_paddle_screening_deduplicates_exact_images_without_formula_extraction(t
     assert not (tmp_path/'formula_cache').exists() and not (tmp_path/'document_cache').exists()
     formula_worker.recognize_pages(tmp_path,lambda:None,screen=True)
     assert len(calls)==1
+
+
+def test_screening_reads_group_representatives_without_removing_api_sources(tmp_path):
+    visuals=images(tmp_path)
+    visuals[0].update(content_id='p',is_representative=False)
+    visuals[1].update(content_id='p',is_representative=True)
+    assert [v['id'] for v in slide_review.screening_targets(visuals)]==['v1']
+    section={'end':60,'visual_ids':['v0','v1']}
+    images_sent,_=slide_review.source_images(section,visuals,tmp_path)
+    assert [i['id'] for i in images_sent]==['v0','v1']
+    for i,v in enumerate(visuals):v['document_page']=i+1
+    assert [v['id'] for v in slide_review.screening_targets(visuals)]==['v0','v1']
 
 
 def test_new_pipeline_keeps_image_compaction_and_screening_but_skips_rapidocr_and_formulas(tmp_path,monkeypatch,sample_video):

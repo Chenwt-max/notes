@@ -14,7 +14,7 @@ from .document_model import DOCUMENT_MODEL
 SESSION_KEY = ''
 DEFAULTS = {'base_url': '', 'model': '', 'input_price': 0., 'output_price': 0., 'budget_per_hour': 1., 'budget_per_note': 1.,
             'input_tokens_per_hour': 180000, 'output_tokens_per_hour': 60000, 'max_output_tokens': 6000,
-            'review_notes':True,
+            'review_notes':True,'review_max_output_tokens':16384,
             'remember_key': False, 'include_ocr_context':False, 'asr_model': ASR_MODEL, 'device': 'cuda',
             'person_model':'yolox-tiny','formula_model':DOCUMENT_MODEL,'processing_mode':'balanced',
             'cpu_threads':2,'gpu_concurrency':1,'max_concurrent_jobs':0}
@@ -66,6 +66,8 @@ def save_settings(value):
     old = read_json(DATA/'settings.json', {})
     result = {key: value.get(key, old.get(key, default)) for key, default in DEFAULTS.items()}
     if type(result['review_notes']) is not bool:raise ValueError('笔记复核选项必须为开或关')
+    if type(result['review_max_output_tokens']) is not int or not 1024<=result['review_max_output_tokens']<=65536:
+        raise ValueError('复核输出上限必须为1024至65536之间的整数')
     result['asr_model']=value.get('asr_model',ASR_MODEL)
     if result['asr_model']!=ASR_MODEL:raise ValueError('未知的字幕模型')
     if result['processing_mode'] not in {'listening','balanced','fast'}:

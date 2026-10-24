@@ -25,6 +25,30 @@ jobs:
         run: npm run build --prefix frontend
       - name: Component interactions
         run: node tests/ui/run.mjs
+      - name: Reading updates and visible polling
+        run: |
+          node tests/ui/run.mjs tests/ui/reader-performance.tsx
+          node tests/ui/run.mjs tests/ui/polling.tsx
+          node tests/ui/run.mjs tests/ui/appearance.tsx
+          node tests/ui/run.mjs tests/ui/preparation-polling.tsx
+      - name: Library and catalog read states
+        run: |
+          node tests/ui/run.mjs tests/ui/data-states.tsx library-empty
+          node tests/ui/run.mjs tests/ui/data-states.tsx library-failed
+          node tests/ui/run.mjs tests/ui/data-states.tsx catalog-failed
+          node tests/ui/run.mjs tests/ui/data-states.tsx catalog-deep
+          node tests/ui/run.mjs tests/ui/data-states.tsx catalog-create
+      - name: Concurrent read ordering and recovery
+        run: |
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-latest
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-return
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-error
+          node tests/ui/run.mjs tests/ui/read-order.tsx jobs
+          node tests/ui/run.mjs tests/ui/read-order.tsx library
+          node tests/ui/run.mjs tests/ui/read-order.tsx catalog
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-retry
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-initial
+          node tests/ui/run.mjs tests/ui/read-order.tsx detail-terminal
       - name: Existing PPT and PDF input
         run: node tests/ui/run.mjs tests/ui/handouts.tsx
       - name: Existing notes without downloaded models

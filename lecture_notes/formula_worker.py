@@ -40,11 +40,16 @@ def recognize_pages(output,check,screen=False):
     timing=Timings(output,'screening' if screen else 'formula')
     import hashlib
     visuals = read_json(output/'visuals.json',[]) if screen else formula_targets(output)
+    source_page_count=len(visuals)
+    if screen:
+        from .slide_review import screening_targets
+        visuals=screening_targets(visuals)
     check()
     device = 'gpu:0' if inference_device()=='cuda' and paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() else 'cpu'
     print(json.dumps({'formula_device':device}),flush=True)
     runtime={'device':device,'paddle_version':paddle.__version__,'model':DOCUMENT_MODEL,
              'batch_size':1,'cpu_threads':cpu_threads(),'backend':'native','computed_pages':0,'cached_pages':0}
+    if screen:runtime.update(source_pages=source_page_count,selected_pages=len(visuals),selection='one_per_visual_group_documents_all')
     if device.startswith('gpu'):
         runtime['allocator_limit_mib']=6656
     runtime_path=output/('screening_runtime.json' if screen else 'formula_runtime.json')

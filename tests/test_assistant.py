@@ -172,7 +172,7 @@ def test_legacy_whole_course_uses_manifest_duration(local,monkeypatch):
 def test_native_image_endpoint_preserves_resolution_and_full_frame(local,monkeypatch):
     job,output,config,value=local
     image=np.full((1080,1920,3),240,np.uint8)
-    monkeypatch.setattr(server,'image_at',lambda *args:image)
+    monkeypatch.setattr(server,'displayed_image_at',lambda *args:image)
     write_json(output/'manifest.json',{'source':source_identity(job['spec']['path'])})
     write_json(output/'source_records.json',[{'id':'v1','capture_ts':1,'quad':[[.1,.1],[.9,.1],[.9,.9],[.1,.9]]}])
     client=TestClient(server.app)
